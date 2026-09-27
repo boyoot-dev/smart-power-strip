@@ -1,0 +1,506 @@
+<!--
+  Smart Power Strip overview - ThingsBoard "HTML Card" widget (static type).
+  Paste this file into the widget's HTML tab and strip-overview.css into the CSS tab,
+  then set DEVICE_ID below (and the matching data-device-id attribute) to the strip's
+  device id. One widget covers the whole strip.
+
+  Patterns reused from esp32-mqtt-generic-board/dashboard (verified there against the
+  same ThingsBoard 4.2 server):
+  - DOM scoped via document.querySelector('[data-device-id=...]'): self.ctx is undefined
+    and document.currentScript is null for static HTML Card widgets.
+  - Live values over the ENTITY_DATA WebSocket subscription (query.latestValues must be
+    present, even empty, or the server throws a NullPointerException).
+  - Online/offline from the age of TbLink's "heartbeat" point (every 8 s): ThingsBoard
+    ignores MQTT last-will and its "active" attribute lags by ~60 s.
+  - Control and history over REST with the page's JWT from localStorage.
+-->
+<div class="ps" data-device-id="PUT-DEVICE-ID-HERE">
+  <header class="ps-head">
+    <div class="ps-title">
+      <span class="ps-dot"></span>
+      <div>
+        <div class="ps-name">Power Strip</div>
+        <div class="ps-sub"><span class="ps-status">Checking&hellip;</span><span class="ps-meta"></span></div>
+      </div>
+    </div>
+    <div class="ps-mains">
+      <div class="ps-stat"><span class="ps-num" data-f="voltage">&ndash;</span><span class="ps-unit">V</span><span class="ps-cap">Mains</span></div>
+      <div class="ps-stat"><span class="ps-num" data-f="frequency">&ndash;</span><span class="ps-unit">Hz</span><span class="ps-cap">Frequency</span></div>
+      <div class="ps-stat"><span class="ps-num" data-f="total_power">&ndash;</span><span class="ps-unit">W</span><span class="ps-cap">Total power</span></div>
+      <div class="ps-stat"><span class="ps-num" data-f="total_current">&ndash;</span><span class="ps-unit">A</span><span class="ps-cap">Total current</span></div>
+      <div class="ps-stat" title=""><span class="ps-num ps-temp">&ndash;</span><span class="ps-unit">&deg;C</span><span class="ps-cap">Hottest point</span></div>
+    </div>
+  </header>
+  <div class="ps-alert" hidden></div>
+
+  <div class="ps-outlets"></div>
+
+  <div class="ps-modal" hidden>
+    <div class="ps-backdrop"></div>
+    <div class="ps-panel" role="dialog" aria-modal="true">
+      <div class="ps-panel-head">
+        <div class="ps-panel-title">&ndash;</div>
+        <button type="button" class="ps-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="ps-range">
+        <button type="button" data-days="1">24 hours</button>
+        <button type="button" data-days="7">7 days</button>
+        <button type="button" data-days="30">30 days</button>
+      </div>
+      <div class="ps-panel-body"></div>
+      <div class="ps-panel-foot">
+        <button type="button" class="ps-reset">Reset energy counter</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var DEVICE_ID = 'PUT-DEVICE-ID-HERE';  // must match data-device-id above
+  var root = document.querySelector('[data-device-id="' + DEVICE_ID + '"]');
+  if (!root) {
+    console.error('strip-overview: no element with data-device-id=' + DEVICE_ID);
+    return;
+  }
+  var TB_HOST = window.location.origin;
+  var OUTLETS = [1, 2];
+  var STALE_AFTER_MS = 25000;  // heartbeat every 8 s; three missed = offline
+
+  var $ = function(sel) { return root.querySelector(sel); };
+  var outletsEl = $('.ps-outlets');
+
+  // ---------- helpers ----------
+  function token() { return localStorage.getItem('jwt_token'); }
+
+  function api(path, opts) {
+    opts = opts || {};
+    opts.headers = Object.assign({ 'X-Authorization': 'Bearer ' + token() },
+                                 opts.body ? { 'Content-Type': 'application/json' } : {},
+                                 opts.headers || {});
+    return fetch(TB_HOST + path, opts).then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      var ct = r.headers.get('content-type') || '';
+      return ct.indexOf('json') >= 0 ? r.json() : null;
+    });
+  }
+
+  function rpc(method, params) {
+    return api('/api/rpc/oneway/' + DEVICE_ID, { method: 'POST', body: JSON.stringify({ method: method, params: params }) });
+  }
+
+  function num(v, digits) {
+    var n = Number(v);
+    return isFinite(n) ? n.toFixed(digits) : '–';
+  }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"]/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; });
+  }
+
+  function when(ts) {
+    var d = new Date(ts), now = new Date();
+    var time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (d.toDateString() === now.toDateString()) return time;
+    return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + time;
+  }
+
+  function duration(ms) {
+    var m = Math.max(1, Math.round(ms / 60000));
+    if (m < 60) return m + ' min';
+    var h = Math.floor(m / 60);
+    if (h < 24) return h + ' h' + (m % 60 ? ' ' + (m % 60) + ' min' : '');
+    return Math.floor(h / 24) + ' d ' + (h % 24) + ' h';
+  }
+
+  var SOURCE_TEXT = {
+    overheat: 'by overheat protection', sensor_fault: 'temperature probe fault',
+    boot: 'after power returned', button: 'by wall switch', web: 'from local page',
+    thingsboard: 'from dashboard', rule: 'by rule', overcurrent: 'overcurrent trip',
+    voltage: 'voltage protection', compressor_delay_release: 'after compressor delay'
+  };
+
+  // ---------- state ----------
+  var state = { online: false, seen: false, lastBeat: 0, names: {}, outlets: {} };
+  OUTLETS.forEach(function(n) {
+    state.outlets[n] = { on: null, pendingS: 0, pendingTs: 0, current: null, power: null, pf: null, energy: null };
+  });
+
+  // ---------- outlet cards ----------
+  var POWER_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v8M17.7 6.3a8 8 0 1 1-11.4 0"/></svg>';
+  var cards = {};
+
+  OUTLETS.forEach(function(n) {
+    var el = document.createElement('div');
+    el.className = 'ps-card';
+    el.innerHTML =
+      '<div class="ps-card-top">' +
+        '<div class="ps-plug">' + POWER_ICON + '</div>' +
+        '<div class="ps-card-id"><div class="ps-card-name">Out ' + n + '</div><div class="ps-card-state">&ndash;</div></div>' +
+        '<button type="button" class="ps-toggle" role="switch" aria-checked="false" aria-label="Switch Out ' + n + '"><span></span></button>' +
+      '</div>' +
+      '<div class="ps-power"><span class="ps-big">&ndash;</span><span class="ps-big-unit">W</span></div>' +
+      '<div class="ps-kv">' +
+        '<div><b data-k="current">&ndash;</b><span>Amps</span></div>' +
+        '<div><b data-k="pf">&ndash;</b><span>Power factor</span></div>' +
+        '<div><b data-k="energy">&ndash;</b><span>kWh</span></div>' +
+      '</div>' +
+      '<div class="ps-card-hint">Tap for history &rsaquo;</div>';
+    outletsEl.appendChild(el);
+
+    var card = {
+      el: el,
+      name: el.querySelector('.ps-card-name'),
+      stateEl: el.querySelector('.ps-card-state'),
+      toggle: el.querySelector('.ps-toggle'),
+      big: el.querySelector('.ps-big'),
+      kv: {
+        current: el.querySelector('[data-k="current"]'),
+        pf: el.querySelector('[data-k="pf"]'),
+        energy: el.querySelector('[data-k="energy"]')
+      }
+    };
+    cards[n] = card;
+
+    card.toggle.addEventListener('click', function(e) {
+      e.stopPropagation();
+      if (!state.online) return;
+      var o = state.outlets[n];
+      var want = !(o.on || pendingLeft(o) > 0);
+      o.on = want;  // optimistic; the device's own report corrects it
+      renderOutlet(n);
+      rpc('setOutlet', { outlet: n, state: want }).catch(function(err) {
+        card.stateEl.textContent = 'Command failed: ' + err.message;
+      });
+    });
+    el.tabIndex = 0;
+    el.setAttribute('role', 'button');
+    el.setAttribute('aria-label', 'Show history');
+    el.addEventListener('click', function() { openHistory(n); });
+    el.addEventListener('keydown', function(e) {
+      if (e.target === el && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openHistory(n); }
+    });
+  });
+
+  function pendingLeft(o) {
+    if (!o.pendingS) return 0;
+    return Math.max(0, Math.round(o.pendingS - (Date.now() - o.pendingTs) / 1000));
+  }
+
+  function renderOutlet(n) {
+    var o = state.outlets[n], c = cards[n];
+    var left = pendingLeft(o);
+    c.name.textContent = state.names[n] || ('Out ' + n);
+    c.el.classList.toggle('is-on', o.on === true);
+    c.el.classList.toggle('is-wait', !o.on && left > 0);
+    c.el.classList.toggle('is-offline', !state.online);
+    c.toggle.setAttribute('aria-checked', String(o.on === true || left > 0));
+    c.toggle.disabled = !state.online;
+    if (!state.seen) c.stateEl.textContent = 'Loading…';
+    else if (!state.online) c.stateEl.textContent = 'Device offline';
+    else if (o.on === null) c.stateEl.textContent = 'Loading…';
+    else if (o.on) c.stateEl.textContent = 'On';
+    else if (left > 0) c.stateEl.textContent = 'Turning on in ' + Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0');
+    else c.stateEl.textContent = 'Off';
+    c.big.textContent = o.power === null ? '–' : num(o.power, 0);
+    c.kv.current.textContent = o.current === null ? '–' : num(o.current, 2);
+    c.kv.pf.textContent = o.pf === null ? '–' : num(o.pf, 2);
+    c.kv.energy.textContent = o.energy === null ? '–' : num(o.energy, 2);
+  }
+
+  function renderHeader() {
+    root.classList.toggle('is-online', state.online);
+    $('.ps-status').textContent = !state.seen ? 'Checking…' : state.online ? 'Online' : 'Offline';
+  }
+
+  function renderAll() {
+    renderHeader();
+    OUTLETS.forEach(renderOutlet);
+  }
+
+  setInterval(function() {
+    var online = (Date.now() - state.lastBeat) <= STALE_AFTER_MS;
+    if (online !== state.online) { state.online = online; renderAll(); }
+    OUTLETS.forEach(function(n) { if (state.outlets[n].pendingS) renderOutlet(n); });
+  }, 1000);
+
+  // ---------- events ----------
+  function parseEvent(n, ts, value) {
+    var m = /^(on|off) by (.+)$/.exec(String(value));
+    return m ? { ts: Number(ts), outlet: n, on: m[1] === 'on', source: m[2] } : null;
+  }
+
+  function eventRow(e) {
+    return '<div class="ps-ev">' +
+      '<span class="ps-ev-dot ' + (e.on ? 'on' : 'off') + '"></span>' +
+      '<span class="ps-ev-what">Turned <b>' + (e.on ? 'on' : 'off') + '</b>' +
+      ' <span class="ps-ev-src">' + esc(SOURCE_TEXT[e.source] || e.source) + '</span></span>' +
+      '<span class="ps-ev-time">' + when(e.ts) + '</span></div>';
+  }
+
+  // ---------- live values (WebSocket) ----------
+  var TS_KEYS = ['heartbeat', 'voltage', 'frequency', 'total_power', 'total_current', 'current_fw_version', 'thermal_state'];
+  var ATTR_KEYS = ['ip', 'rssi'];
+  var PROBES = [1, 2, 3, 4];
+  PROBES.forEach(function(i) { TS_KEYS.push('temp_' + i); ATTR_KEYS.push('temp_' + i + '_name'); });
+  var temps = {}, probeNames = {};
+  var THERMAL_TEXT = {
+    overheat: 'Overheat: all outlets were switched off and stay locked until every probe cools down.',
+    probe_fault: 'A temperature probe stopped answering, so all outlets were switched off. Check it on the strip’s local page.'
+  };
+
+  function renderThermal() {
+    var max = null, parts = [];
+    PROBES.forEach(function(i) {
+      if (temps[i] === undefined) return;
+      max = max === null ? temps[i] : Math.max(max, temps[i]);
+      parts.push((probeNames[i] || 'Probe ' + i) + ': ' + num(temps[i], 1) + '°C');
+    });
+    var el = root.querySelector('.ps-temp');
+    el.textContent = max === null ? '–' : num(max, 1);
+    el.parentNode.title = parts.join('\n');
+  }
+  OUTLETS.forEach(function(n) {
+    ['state', 'current', 'power', 'pf', 'energy', 'pending_s'].forEach(function(k) { TS_KEYS.push('out' + n + '_' + k); });
+    ATTR_KEYS.push('out' + n + '_name');
+  });
+  var meta = { fw: null, ip: null, rssi: null };
+
+  function renderMeta() {
+    var bits = [];
+    if (meta.fw) bits.push('fw ' + meta.fw);
+    if (meta.ip) bits.push(meta.ip);
+    if (meta.rssi) bits.push('WiFi ' + meta.rssi + ' dBm');
+    $('.ps-meta').textContent = bits.length ? ' · ' + bits.join(' · ') : '';
+  }
+
+  function applyTs(key, p) {
+    var v = p.value, ts = Number(p.ts);
+    if (key === 'heartbeat') { state.lastBeat = ts; return; }
+    if (key === 'current_fw_version') { meta.fw = v; renderMeta(); return; }
+    if (key === 'thermal_state') {
+      var alertEl = root.querySelector('.ps-alert'), text = THERMAL_TEXT[v];
+      alertEl.hidden = !text;
+      alertEl.textContent = text || '';
+      return;
+    }
+    var tm = /^temp_(\d)$/.exec(key);
+    if (tm) { temps[Number(tm[1])] = Number(v); renderThermal(); return; }
+    var head = root.querySelector('[data-f="' + key + '"]');
+    if (head) {
+      head.textContent = num(v, key === 'frequency' ? 2 : key === 'total_current' ? 2 : 0);
+      return;
+    }
+    var m = /^out(\d)_(.+)$/.exec(key);
+    if (!m) return;
+    var n = Number(m[1]), f = m[2], o = state.outlets[n];
+    if (!o) return;
+    if (f === 'state') {
+      var on = (v === true || v === 'true');
+      if (o.on !== null && on !== o.on) historyChanged(n);
+      o.on = on;
+    }
+    else if (f === 'pending_s') { o.pendingS = Number(v) || 0; o.pendingTs = ts; }
+    else o[f] = v;
+    renderOutlet(n);
+  }
+
+  function applyLatest(latest) {
+    var ts = latest.TIME_SERIES || {}, at = latest.ATTRIBUTE || {};
+    Object.keys(ts).forEach(function(k) { if (ts[k] && ts[k].ts) applyTs(k, ts[k]); });
+    Object.keys(at).forEach(function(k) {
+      var v = at[k] && at[k].value;
+      if (v === undefined || v === '') return;
+      var m = /^out(\d)_name$/.exec(k), pm = /^temp_(\d)_name$/.exec(k);
+      if (m) state.names[Number(m[1])] = v;
+      else if (pm) { probeNames[Number(pm[1])] = v; renderThermal(); }
+      else meta[k] = v;
+    });
+    state.seen = true;
+    state.online = (Date.now() - state.lastBeat) <= STALE_AFTER_MS;
+    renderMeta();
+    renderAll();
+  }
+
+  var ws = null, reconnectTimer = null;
+  function connectWs() {
+    ws = new WebSocket(TB_HOST.replace(/^http/, 'ws') + '/api/ws');
+    ws.onopen = function() {
+      var keys = TS_KEYS.map(function(k) { return { type: 'TIME_SERIES', key: k }; })
+        .concat(ATTR_KEYS.map(function(k) { return { type: 'ATTRIBUTE', key: k }; }));
+      ws.send(JSON.stringify({
+        authCmd: { cmdId: 0, token: token() },
+        cmds: [{
+          cmdId: 1, type: 'ENTITY_DATA',
+          query: {
+            entityFilter: { type: 'singleEntity', singleEntity: { entityType: 'DEVICE', id: DEVICE_ID } },
+            pageLink: { pageSize: 1, page: 0 },
+            entityFields: [{ type: 'ENTITY_FIELD', key: 'name' }],
+            latestValues: []
+          },
+          latestCmd: { keys: keys }
+        }]
+      }));
+    };
+    ws.onmessage = function(e) {
+      var msg;
+      try { msg = JSON.parse(e.data); } catch (err) { return; }
+      if (msg.errorCode) { console.error('strip-overview WS error', msg.errorMsg); return; }
+      var list = (msg.data && msg.data.data) || msg.update;
+      var ent = list && list[0];
+      if (ent && ent.latest) applyLatest(ent.latest);
+      if (ent && ent.latest && ent.latest.ENTITY_FIELD && ent.latest.ENTITY_FIELD.name) {
+        $('.ps-name').textContent = ent.latest.ENTITY_FIELD.name.value;
+      }
+    };
+    ws.onclose = function() {
+      if (reconnectTimer) return;
+      reconnectTimer = setTimeout(function() { reconnectTimer = null; connectWs(); }, 5000);
+    };
+    ws.onerror = function() { ws.close(); };
+  }
+
+  // ---------- history modal ----------
+  var modal = $('.ps-modal'), body = $('.ps-panel-body'), resetBtn = $('.ps-reset');
+  var rangeBtns = root.querySelectorAll('.ps-range button');
+  var hist = { n: 1, days: 1, req: 0 };
+  // Server-side averaging keeps every range at ~100-300 points.
+  var BUCKET_MS = { 1: 5 * 60e3, 7: 60 * 60e3, 30: 6 * 60 * 60e3 };
+
+  function chartSvg(points, start, end) {
+    var W = 640, H = 200, L = 44, R = 8, T = 10, B = 24;
+    var max = 0;
+    points.forEach(function(p) { max = Math.max(max, p.v); });
+    var step = [5, 10, 25, 50, 100, 250, 500, 1000, 2500].filter(function(s) { return s * 4 >= max; })[0] || 5000;
+    var top = Math.max(step, Math.ceil(max / step) * step);
+    function x(ts) { return L + (ts - start) / (end - start) * (W - L - R); }
+    function y(v) { return T + (1 - v / top) * (H - T - B); }
+    var grid = '';
+    for (var g = 0; g <= top; g += top / 4) {
+      grid += '<line class="ps-grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(g).toFixed(1) + '" y2="' + y(g).toFixed(1) + '"/>' +
+              '<text class="ps-axis" x="' + (L - 6) + '" y="' + (y(g) + 4).toFixed(1) + '" text-anchor="end">' + Math.round(g) + '</text>';
+    }
+    var line = points.map(function(p) { return x(p.ts).toFixed(1) + ',' + y(p.v).toFixed(1); }).join(' ');
+    var area = points.length ? 'M' + x(points[0].ts).toFixed(1) + ',' + y(0) + ' L' + line.replace(/ /g, ' L') +
+               ' L' + x(points[points.length - 1].ts).toFixed(1) + ',' + y(0) + ' Z' : '';
+    var labels = [start, (start + end) / 2, end].map(function(t, i) {
+      return '<text class="ps-axis" x="' + x(t).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="' + ['start', 'middle', 'end'][i] + '">' + (i === 2 ? 'Now' : when(t)) + '</text>';
+    }).join('');
+    var last = points[points.length - 1];
+    return '<svg class="ps-chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Average power over time, peak ' + Math.round(max) + ' W">' +
+      grid + '<text class="ps-axis" x="' + (L - 6) + '" y="' + (T - 1) + '" text-anchor="end" dy="-2">W</text>' +
+      (area ? '<path class="ps-area" d="' + area + '"/><polyline class="ps-line" points="' + line + '"/>' +
+              '<circle class="ps-end" cx="' + x(last.ts).toFixed(1) + '" cy="' + y(last.v).toFixed(1) + '" r="3.5"/>' : '') +
+      labels + '</svg>';
+  }
+
+  function timeline(states, start, end) {
+    // Collapse repeated periodic reports into real transitions.
+    var segs = [];
+    states.forEach(function(p) {
+      var on = p.value === true || p.value === 'true', ts = Number(p.ts);
+      if (!segs.length || segs[segs.length - 1].on !== on) segs.push({ on: on, ts: Math.max(ts, start) });
+    });
+    var onMs = 0;
+    var bar = segs.map(function(s, i) {
+      var e = i + 1 < segs.length ? segs[i + 1].ts : end;
+      if (s.on) onMs += e - s.ts;
+      return '<div class="ps-seg ' + (s.on ? 'on' : 'off') + '" style="width:' + ((e - s.ts) / (end - start) * 100).toFixed(2) + '%" title="' +
+        (s.on ? 'On' : 'Off') + ' from ' + when(s.ts) + '"></div>';
+    }).join('');
+    var lead = segs.length ? ((segs[0].ts - start) / (end - start) * 100).toFixed(2) : 100;
+    return { html: '<div class="ps-timeline"><div class="ps-seg none" style="width:' + lead + '%"></div>' + bar + '</div>', onMs: onMs };
+  }
+
+  // The open panel refreshes itself when its outlet switches. The short delay lets the
+  // matching outN_event point reach ThingsBoard before we re-query.
+  var refreshTimer = null;
+  function historyChanged(n) {
+    if (modal.hidden || hist.n !== n) return;
+    clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(function() { if (!modal.hidden) loadHistory(true); }, 1500);
+  }
+
+  function loadHistory(quiet) {
+    var req = ++hist.req, n = hist.n, end = Date.now(), start = end - hist.days * 864e5;
+    if (!quiet) body.innerHTML = '<div class="ps-empty">Loading&hellip;</div>';
+    var listEl = body.querySelector('.ps-ev-list'), listScroll = listEl ? listEl.scrollTop : 0;
+    var base = '/api/plugins/telemetry/DEVICE/' + DEVICE_ID + '/values/timeseries?startTs=' + start + '&endTs=' + end;
+    Promise.all([
+      api(base + '&keys=out' + n + '_power&agg=AVG&interval=' + BUCKET_MS[hist.days] + '&limit=1000'),
+      api(base + '&keys=out' + n + '_state&agg=NONE&orderBy=ASC&limit=50000'),
+      api(base + '&keys=out' + n + '_event&agg=NONE&orderBy=DESC&limit=200')
+    ]).then(function(r) {
+      if (req !== hist.req) return;
+      var pts = ((r[0] && r[0]['out' + n + '_power']) || []).map(function(p) { return { ts: Number(p.ts), v: Math.max(0, Number(p.value) || 0) }; })
+        .sort(function(a, b) { return a.ts - b.ts; });
+      var tl = timeline((r[1] && r[1]['out' + n + '_state']) || [], start, end);
+      var avg = 0, peak = 0;
+      pts.forEach(function(p) { avg += p.v; peak = Math.max(peak, p.v); });
+      avg = pts.length ? avg / pts.length : 0;
+      var covered = pts.length * BUCKET_MS[hist.days];
+      var kwh = avg * Math.min(covered, end - start) / 3600e3 / 1000;
+      var evs = ((r[2] && r[2]['out' + n + '_event']) || []).map(function(p) { return parseEvent(n, p.ts, p.value); })
+        .filter(Boolean).sort(function(a, b) { return b.ts - a.ts; });
+      body.innerHTML =
+        '<div class="ps-sum">' +
+          '<div><b>' + num(avg, 0) + ' W</b><span>Average</span></div>' +
+          '<div><b>' + num(peak, 0) + ' W</b><span>Peak</span></div>' +
+          '<div><b>&asymp; ' + num(kwh, 2) + '</b><span>kWh used</span></div>' +
+          '<div><b>' + duration(tl.onMs) + '</b><span>Time on</span></div>' +
+        '</div>' +
+        (pts.length ? chartSvg(pts, start, end) : '<div class="ps-empty">No power readings in this range.</div>') +
+        '<div class="ps-sec-title">On / off</div>' + tl.html +
+        '<div class="ps-tl-legend"><span><i class="on"></i>On</span><span><i class="off"></i>Off</span><span><i class="none"></i>No data</span></div>' +
+        '<div class="ps-sec-title">Switching (' + evs.length + (evs.length === 200 ? '+' : '') + ')</div>' +
+        (evs.length ? '<div class="ps-ev-list">' + evs.map(eventRow).join('') + '</div>' : '<div class="ps-empty">No switching in this range.</div>');
+      var newList = body.querySelector('.ps-ev-list');
+      if (quiet && newList) newList.scrollTop = listScroll;  // keep the reader's place
+    }).catch(function(err) {
+      if (req === hist.req && !quiet) body.innerHTML = '<div class="ps-empty">Could not load history: ' + esc(err.message) + '</div>';
+    });
+  }
+
+  function openHistory(n) {
+    hist.n = n;
+    $('.ps-panel-title').textContent = (state.names[n] || ('Out ' + n)) + ' – history';
+    rangeBtns.forEach(function(b) { b.classList.toggle('is-active', Number(b.dataset.days) === hist.days); });
+    resetArmed(false);
+    modal.hidden = false;
+    loadHistory();
+  }
+
+  function closeHistory() { modal.hidden = true; hist.req++; }
+
+  rangeBtns.forEach(function(b) {
+    b.addEventListener('click', function() {
+      hist.days = Number(b.dataset.days);
+      rangeBtns.forEach(function(x) { x.classList.toggle('is-active', x === b); });
+      loadHistory();
+    });
+  });
+  $('.ps-close').addEventListener('click', closeHistory);
+  $('.ps-backdrop').addEventListener('click', closeHistory);
+  document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && !modal.hidden) closeHistory(); });
+
+  // Two-step confirm built into the button: first click arms it for 4 s.
+  var resetTimer = null;
+  function resetArmed(on) {
+    clearTimeout(resetTimer);
+    resetBtn.classList.toggle('is-armed', on);
+    resetBtn.textContent = on ? 'Click again to reset to 0 kWh' : 'Reset energy counter';
+    if (on) resetTimer = setTimeout(function() { resetArmed(false); }, 4000);
+  }
+  resetBtn.addEventListener('click', function() {
+    if (!resetBtn.classList.contains('is-armed')) { resetArmed(true); return; }
+    resetArmed(false);
+    rpc('resetEnergy', { outlet: hist.n })
+      .then(function() { resetBtn.textContent = 'Energy counter reset'; })
+      .catch(function(err) { resetBtn.textContent = 'Reset failed: ' + err.message; });
+  });
+
+  // ---------- start ----------
+  renderAll();
+  connectWs();
+})();
+</script>

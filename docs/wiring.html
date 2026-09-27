@@ -1,0 +1,810 @@
+<title>Power Strip Wiring</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+:root {
+  --bg:#eef0ec; --surface:#fbfcfa; --ink:#18201c; --muted:#5a665f; --line:#d3d8d1;
+  --accent:#0e6b62; --danger:#c0341d; --danger-bg:#fbe8e3; --safe-bg:#e4f1ec; --ok:#1f8a4c;
+  --socket:#f4f1ea;
+  --w-live:#8b4a1c; --w-neutral:#1f63c6; --w-earth:#2f9447; --w-5v:#d7261e; --w-gnd:#1a1a1a;
+  --w-sig:#7b3fc4; --w-ctl:#e07b00; --w-sw:#0b8c86; --w-1w:#c2185b; --brass:#caa24c;
+  --display:"Barlow Condensed","Arial Narrow",sans-serif;
+  --body:"Source Sans 3","Segoe UI",system-ui,sans-serif;
+  --mono:"JetBrains Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme:dark;
+    --bg:#0f1412; --surface:#161c19; --ink:#e3e9e5; --muted:#97a39c; --line:#2b3430;
+    --accent:#53c2b4; --danger:#ff7a5c; --danger-bg:#2c1814; --safe-bg:#10251f; --ok:#4fcf83;
+    --socket:#dcd7cb;
+    --w-live:#c47a42; --w-neutral:#5b95f0; --w-earth:#4cbf66; --w-5v:#ff5a4f; --w-gnd:#c9d1cc;
+    --w-sig:#b07cf5; --w-ctl:#ffa032; --w-sw:#33c2bb; --w-1w:#f06292;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme:dark;
+  --bg:#0f1412; --surface:#161c19; --ink:#e3e9e5; --muted:#97a39c; --line:#2b3430;
+  --accent:#53c2b4; --danger:#ff7a5c; --danger-bg:#2c1814; --safe-bg:#10251f; --ok:#4fcf83;
+  --socket:#dcd7cb;
+  --w-live:#c47a42; --w-neutral:#5b95f0; --w-earth:#4cbf66; --w-5v:#ff5a4f; --w-gnd:#c9d1cc;
+  --w-sig:#b07cf5; --w-ctl:#ffa032; --w-sw:#33c2bb; --w-1w:#f06292;
+}
+body { background:var(--bg); color:var(--ink); font:17px/1.55 var(--body); }
+.wrap { max-width:1120px; margin:0 auto; padding-inline:16px; padding-block:32px 64px; }
+h1,h2,h3 { font-family:var(--display); text-wrap:balance; line-height:1.1; margin:0; }
+h1 { font-size:clamp(2.2rem,5vw,3.4rem); letter-spacing:.01em; }
+h2 { font-size:1.9rem; }
+h3 { font-size:1.25rem; }
+p { margin:0; max-width:68ch; }
+.lede { color:var(--muted); margin-top:8px; }
+code, .mono { font-family:var(--mono); font-size:.88em; }
+header { display:grid; gap:18px; margin-bottom:28px; }
+.eyebrow { font:600 .8rem var(--mono); letter-spacing:.12em; text-transform:uppercase; color:var(--accent); }
+nav { display:flex; flex-wrap:wrap; gap:8px; }
+nav a { font:600 .95rem var(--body); color:var(--ink); text-decoration:none; padding:6px 12px; border:1px solid var(--line); border-radius:999px; background:var(--surface); }
+nav a:hover, nav a:focus-visible { border-color:var(--accent); color:var(--accent); outline:none; }
+.warn { display:grid; gap:6px; background:var(--danger-bg); border-left:5px solid var(--danger); padding:14px 18px; border-radius:4px; }
+.warn strong { color:var(--danger); font-family:var(--display); font-size:1.25rem; letter-spacing:.02em; }
+.warn ul { margin:0; padding-left:20px; }
+.legend { display:flex; flex-wrap:wrap; gap:10px 22px; padding:14px 18px; background:var(--surface); border:1px solid var(--line); border-radius:6px; }
+.legend h3 { width:100%; font-size:1.05rem; }
+.sw { display:inline-flex; align-items:center; gap:8px; font-size:.95rem; }
+.sw i { display:inline-block; width:34px; height:6px; border-radius:3px; }
+.sw i.earth { background:repeating-linear-gradient(90deg,var(--w-earth) 0 8px,#f2c200 8px 16px); }
+section { margin-top:56px; display:grid; gap:16px; }
+.step { font:700 .85rem var(--mono); color:var(--accent); letter-spacing:.08em; }
+figure { margin:0; background:var(--surface); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.scroll { overflow-x:auto; padding:12px; }
+figure svg { display:block; width:100%; height:auto; min-width:760px; }
+figcaption { padding:12px 18px; border-top:1px solid var(--line); color:var(--muted); font-size:.95rem; }
+.cols { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; }
+.card { background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:16px 18px; display:grid; gap:8px; align-content:start; }
+.card ul, .card ol { margin:0; padding-left:20px; }
+table { border-collapse:collapse; width:100%; font-size:.95rem; }
+th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); }
+th { font:600 .8rem var(--mono); text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
+.tbl { overflow-x:auto; background:var(--surface); border:1px solid var(--line); border-radius:6px; }
+.checks { list-style:none; padding:0; margin:0; display:grid; gap:6px; }
+.checks label { display:flex; gap:10px; align-items:baseline; cursor:pointer; }
+.checks input { accent-color:var(--accent); width:18px; height:18px; flex:none; transform:translateY(3px); }
+.checks input:checked + span { color:var(--muted); text-decoration:line-through; }
+.checks input:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.band { display:inline-flex; gap:2px; vertical-align:middle; margin-left:6px; }
+.band b { width:8px; height:16px; border-radius:2px; display:inline-block; }
+footer { margin-top:56px; color:var(--muted); font-size:.9rem; }
+
+/* SVG styling */
+.w { fill:none; stroke-width:4; stroke-linecap:round; stroke-linejoin:round; }
+.wl { stroke:var(--w-live); } .wn { stroke:var(--w-neutral); } .wpe { stroke:var(--w-earth); }
+.wpe2 { stroke:#f2c200; stroke-dasharray:10 10; stroke-linecap:butt; }
+.w5 { stroke:var(--w-5v); } .wg { stroke:var(--w-gnd); } .ws { stroke:var(--w-sig); }
+.wc { stroke:var(--w-ctl); } .w1w { stroke:var(--w-1w); } .wsw { stroke:var(--w-sw); } .wx { stroke:var(--muted); stroke-dasharray:6 6; }
+.lead { fill:none; stroke:#8d948f; stroke-width:3; }
+.halo { fill:none; stroke:var(--surface); stroke-width:14; }
+.fl { fill:var(--w-live); } .fn { fill:var(--w-neutral); } .fpe { fill:var(--w-earth); }
+.f5 { fill:var(--w-5v); } .fg { fill:var(--w-gnd); } .fs { fill:var(--w-sig); } .fc { fill:var(--w-ctl); } .fsw { fill:var(--w-sw); } .f1w { fill:var(--w-1w); }
+.t { font:500 13px var(--mono); fill:var(--ink); }
+.tm { font:500 12px var(--mono); fill:var(--muted); }
+.tok { font:700 13px var(--mono); fill:var(--ok); }
+.tbad { font:700 13px var(--mono); fill:var(--danger); }
+.tz { font:700 16px var(--display); letter-spacing:.06em; }
+.bn { font:700 17px var(--display); fill:#fff; letter-spacing:.03em; }
+.bs { font:500 11px var(--mono); fill:#ffffffc0; }
+.bp { font:700 12px var(--mono); fill:#fff; }
+.os { font:700 12px var(--mono); fill:#222; }
+.osn { font:700 16px var(--display); fill:#222; }
+.term { fill:var(--brass); stroke:#6d5317; stroke-width:1.5; }
+.sock { fill:var(--socket); stroke:#6f6a60; stroke-width:1.5; }
+.zd { fill:var(--danger-bg); } .zs { fill:var(--safe-bg); }
+.barrier { stroke:var(--danger); stroke-width:3; stroke-dasharray:12 8; }
+.gsym { stroke:var(--w-gnd); stroke-width:3; stroke-linecap:round; }
+@media (prefers-reduced-motion: no-preference) { nav a { transition:border-color .15s,color .15s; } }
+</style>
+
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Smart power strip &middot; 2 outlets &middot; 220 V / 50 Hz</div>
+  <h1>Power Strip Wiring</h1>
+  <p class="lede">Every connection, drawn one step at a time. Build the low-voltage steps (2 to 5) first on the bench with no mains plugged in. Wire the mains (step 1) last, inside the enclosure.</p>
+  <div class="warn" role="note">
+    <strong>220 V CAN KILL</strong>
+    <ul>
+      <li>Unplug from the wall before touching any wire. The screw terminals on the relay, ACS712, ZMPT101B and HLK boards are bare and live.</li>
+      <li>Mains wires go only through screw terminals, never through breadboard or perfboard.</li>
+      <li>A 16&nbsp;A fuse or breaker on the input is mandatory.</li>
+    </ul>
+  </div>
+  <div class="legend" aria-label="Wire colour key">
+    <h3>Wire colours used in the drawings</h3>
+    <span class="sw"><i style="background:var(--w-live)"></i>Live (L), brown</span>
+    <span class="sw"><i style="background:var(--w-neutral)"></i>Neutral (N), blue</span>
+    <span class="sw"><i class="earth"></i>Earth (PE), green/yellow</span>
+    <span class="sw"><i style="background:var(--w-5v)"></i>+5 V</span>
+    <span class="sw"><i style="background:var(--w-gnd)"></i>GND</span>
+    <span class="sw"><i style="background:var(--w-sig)"></i>Sensor signal</span>
+    <span class="sw"><i style="background:var(--w-ctl)"></i>Relay control</span>
+    <span class="sw"><i style="background:var(--w-sw)"></i>Wall switch / touch</span>
+    <span class="sw"><i style="background:var(--w-1w)"></i>Temperature probe data</span>
+  </div>
+  <nav aria-label="Steps">
+    <a href="#overview">Overview</a>
+    <a href="#mains">1 &middot; Mains</a>
+    <a href="#power">2 &middot; Power rails</a>
+    <a href="#sensors">3 &middot; Sensors</a>
+    <a href="#relays">4 &middot; Relays</a>
+    <a href="#switches">5 &middot; Switches / touch</a>
+    <a href="#probes">6 &middot; Temp probes</a>
+    <a href="#esp32">ESP32 pins</a>
+    <a href="#parts">Parts</a>
+    <a href="#bringup">Testing order</a>
+  </nav>
+</header>
+
+<!-- ============ OVERVIEW ============ -->
+<section id="overview">
+  <h2>The big picture</h2>
+  <p>Every board has two sides. Its mains terminals sit in the red zone and its small pins sit in the green zone. The boards themselves keep the two zones apart, so no wire should ever cross the dashed line.</p>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 1020 670" role="img" aria-label="Each module straddles the isolation barrier: mains terminals on the left, low-voltage pins to the ESP32 on the right.">
+      <rect class="zd" x="0" y="0" width="510" height="670"/>
+      <rect class="zs" x="510" y="0" width="510" height="670"/>
+      <line class="barrier" x1="510" y1="44" x2="510" y2="660"/>
+      <text class="tz" x="255" y="30" text-anchor="middle" style="fill:var(--danger)">220 V MAINS &middot; DANGEROUS</text>
+      <text class="tz" x="765" y="30" text-anchor="middle" style="fill:var(--ok)">LOW VOLTAGE &middot; 5 V / 3.3 V</text>
+
+      <!-- row 1 HLK y=90 -->
+      <line class="w wl" x1="180" y1="80" x2="410" y2="80"/><line class="w wn" x1="180" y1="100" x2="410" y2="100"/>
+      <text class="t" x="24" y="94">Plug L + N</text>
+      <rect x="410" y="65" width="200" height="50" rx="6" fill="#1d1d1d"/>
+      <text class="bn" x="510" y="88" text-anchor="middle">HLK-20M05</text><text class="bs" x="510" y="105" text-anchor="middle">power supply</text>
+      <line class="w w5" x1="610" y1="80" x2="830" y2="80"/><line class="w wg" x1="610" y1="100" x2="830" y2="100"/>
+      <text class="t" x="840" y="94">5 V + GND to all</text>
+
+      <!-- row 2 ACS1 y=165 -->
+      <line class="w wl" x1="180" y1="165" x2="410" y2="165"/>
+      <text class="t" x="24" y="169">L wire of Out 1</text>
+      <rect x="410" y="140" width="200" height="50" rx="6" fill="#b3261e"/>
+      <text class="bn" x="510" y="163" text-anchor="middle">ACS712 #1</text><text class="bs" x="510" y="180" text-anchor="middle">current, Out 1</text>
+      <line class="w ws" x1="610" y1="165" x2="830" y2="165"/>
+      <text class="t" x="840" y="169">OUT &rarr; GPIO 39</text>
+
+      <!-- row 3 ACS2 y=240 -->
+      <line class="w wl" x1="180" y1="240" x2="410" y2="240"/>
+      <text class="t" x="24" y="244">L wire of Out 2</text>
+      <rect x="410" y="215" width="200" height="50" rx="6" fill="#b3261e"/>
+      <text class="bn" x="510" y="238" text-anchor="middle">ACS712 #2</text><text class="bs" x="510" y="255" text-anchor="middle">current, Out 2</text>
+      <line class="w ws" x1="610" y1="240" x2="830" y2="240"/>
+      <text class="t" x="840" y="244">OUT &rarr; GPIO 34</text>
+
+      <!-- row 4 ZMPT y=315 -->
+      <line class="w wl" x1="180" y1="305" x2="410" y2="305"/><line class="w wn" x1="180" y1="325" x2="410" y2="325"/>
+      <text class="t" x="24" y="319">Plug L + N</text>
+      <rect x="410" y="290" width="200" height="50" rx="6" fill="#1d4f91"/>
+      <text class="bn" x="510" y="313" text-anchor="middle">ZMPT101B</text><text class="bs" x="510" y="330" text-anchor="middle">voltage sensor</text>
+      <line class="w ws" x1="610" y1="315" x2="830" y2="315"/>
+      <text class="t" x="840" y="319">OUT &rarr; GPIO 36</text>
+
+      <!-- row 5 Relay1 y=390 -->
+      <line class="w wl" x1="180" y1="390" x2="410" y2="390"/>
+      <text class="t" x="24" y="394">L wire of Out 1</text>
+      <rect x="410" y="365" width="200" height="50" rx="6" fill="#1f5fa8"/>
+      <text class="bn" x="510" y="388" text-anchor="middle">RELAY 1</text><text class="bs" x="510" y="405" text-anchor="middle">switches Out 1</text>
+      <line class="w wc" x1="610" y1="390" x2="830" y2="390"/>
+      <text class="t" x="840" y="394">IN &larr; GPIO 26</text>
+
+      <!-- row 6 Relay2 y=465 -->
+      <line class="w wl" x1="180" y1="465" x2="410" y2="465"/>
+      <text class="t" x="24" y="469">L wire of Out 2</text>
+      <rect x="410" y="440" width="200" height="50" rx="6" fill="#1f5fa8"/>
+      <text class="bn" x="510" y="463" text-anchor="middle">RELAY 2</text><text class="bs" x="510" y="480" text-anchor="middle">switches Out 2</text>
+      <line class="w wc" x1="610" y1="465" x2="830" y2="465"/>
+      <text class="t" x="840" y="469">IN &larr; GPIO 27</text>
+
+      <!-- row 7 switches -->
+      <text class="tm" x="24" y="549">Switches never touch mains</text>
+      <rect x="560" y="520" width="150" height="50" rx="10" class="sock"/>
+      <text class="osn" x="635" y="550" text-anchor="middle">2&times; switch or touch</text>
+      <line class="w wsw" x1="710" y1="545" x2="830" y2="545"/>
+      <text class="t" x="840" y="549">GPIO 25 / 33</text>
+
+      <!-- row 8 temperature probes -->
+      <text class="tm" x="24" y="614">Probe tips only rest on wire insulation</text>
+      <rect x="560" y="590" width="150" height="50" rx="10" fill="#b8c0c6" stroke="#6d7780"/>
+      <text class="osn" x="635" y="620" text-anchor="middle">2&times; temp probe</text>
+      <line class="w w1w" x1="710" y1="615" x2="830" y2="615"/>
+      <text class="t" x="840" y="619">GPIO 32</text>
+    </svg>
+    </div>
+    <figcaption>Left: what each board connects to on the mains side. Right: the pin it connects to on the ESP32. The temperature probes are sealed: their tips rest against wire insulation on the mains side, and only 3.3&nbsp;V travels back along their cables. The steps below show each connection in detail.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ STEP 1 MAINS ============ -->
+<section id="mains">
+  <div class="step">STEP 1 &middot; DO THIS LAST, UNPLUGGED</div>
+  <h2>Mains wiring (220 V)</h2>
+  <p>Use thick wire (at least 1.5&nbsp;mm&sup2;, 2.5&nbsp;mm&sup2; is better) and screw terminals only. Live runs through the fuse, then each outlet has its own chain: <b>ACS712 &rarr; relay &rarr; socket</b>. Neutral and earth go straight to the sockets.</p>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 1110 540" role="img" aria-label="Mains wiring: plug live through a 16 A fuse to a live bus feeding ACS712 then relay then socket for each outlet, plus the power supply and voltage sensor. Neutral and earth run directly to both sockets.">
+      <!-- plug -->
+      <text class="t" x="70" y="180" text-anchor="middle" style="font-weight:700">Mains plug</text>
+      <rect class="sock" x="20" y="190" width="100" height="140" rx="12"/>
+      <text class="os" x="100" y="234" text-anchor="end">L</text>
+      <text class="os" x="100" y="269" text-anchor="end">N</text>
+      <text class="os" x="100" y="304" text-anchor="end">PE</text>
+
+      <!-- fuse -->
+      <text class="t" x="185" y="208" text-anchor="middle">fuse / breaker</text>
+      <line class="w wl" x1="120" y1="230" x2="150" y2="230"/>
+      <rect x="150" y="218" width="70" height="24" rx="12" fill="#f1e3b8" stroke="#8a7a4a" stroke-width="1.5"/>
+      <text class="os" x="185" y="234" text-anchor="middle">16 A</text>
+      <line class="w wl" x1="220" y1="230" x2="270" y2="230"/>
+
+      <!-- live bus -->
+      <polyline class="w wl" points="360,90 270,90 270,385 360,385"/>
+      <polyline class="w wl" points="270,270 360,270"/>
+      <polyline class="w wl" points="270,345 680,345 680,370"/>
+      <circle class="fl" cx="270" cy="230" r="6"/><circle class="fl" cx="270" cy="270" r="6"/><circle class="fl" cx="270" cy="345" r="6"/>
+
+      <!-- earth -->
+      <polyline class="w wpe" points="120,300 135,300 135,515 1080,515 1080,150 1050,150"/>
+      <polyline class="w wpe2" points="120,300 135,300 135,515 1080,515 1080,150 1050,150"/>
+      <polyline class="w wpe" points="1080,330 1050,330"/><polyline class="w wpe2" points="1080,330 1050,330"/>
+      <circle class="fpe" cx="1080" cy="330" r="6"/>
+      <text class="tm" x="600" y="535" text-anchor="middle">earth: never switched, never broken</text>
+
+      <!-- neutral -->
+      <polyline class="w wn" points="120,265 150,265 150,490 880,490 880,130 920,130"/>
+      <polyline class="w wn" points="880,310 920,310"/>
+      <polyline class="w wn" points="360,415 330,415 330,490"/>
+      <polyline class="w wn" points="660,430 660,490"/>
+      <circle class="fn" cx="330" cy="490" r="6"/><circle class="fn" cx="660" cy="490" r="6"/><circle class="fn" cx="880" cy="310" r="6"/>
+
+      <!-- row 1 -->
+      <rect x="360" y="62" width="120" height="56" rx="6" fill="#b3261e"/>
+      <text class="bn" x="420" y="88" text-anchor="middle">ACS712 #1</text><text class="bs" x="420" y="106" text-anchor="middle">current Out 1</text>
+      <text class="tm" x="352" y="80" text-anchor="end">IP+</text><text class="tm" x="488" y="80">IP&minus;</text>
+      <text class="tm" x="420" y="136" text-anchor="middle">small pins &rarr; step 3</text>
+      <line class="w wl" x1="480" y1="90" x2="560" y2="90"/>
+      <rect x="503" y="96" width="34" height="9" rx="4.5" fill="#b8c0c6" stroke="#6d7780"/><text class="tm" x="520" y="122" text-anchor="middle">T1</text>
+      <rect x="560" y="55" width="140" height="70" rx="6" fill="#1f5fa8"/>
+      <text class="bn" x="630" y="86" text-anchor="middle">RELAY 1</text><text class="bs" x="630" y="104" text-anchor="middle">switches Out 1</text>
+      <text class="tm" x="552" y="80" text-anchor="end">COM</text><text class="tm" x="708" y="80">NO</text>
+      <circle cx="700" cy="112" r="5" fill="none" stroke="var(--muted)" stroke-width="2"/>
+      <text class="tm" x="710" y="116">NC: leave empty</text>
+      <text class="tm" x="630" y="142" text-anchor="middle">small pins &rarr; step 4</text>
+      <line class="w wl" x1="700" y1="90" x2="920" y2="90"/>
+      <circle class="term" cx="360" cy="90" r="5"/><circle class="term" cx="480" cy="90" r="5"/><circle class="term" cx="560" cy="90" r="5"/><circle class="term" cx="700" cy="90" r="5"/>
+
+      <!-- row 2 -->
+      <rect x="360" y="242" width="120" height="56" rx="6" fill="#b3261e"/>
+      <text class="bn" x="420" y="268" text-anchor="middle">ACS712 #2</text><text class="bs" x="420" y="286" text-anchor="middle">current Out 2</text>
+      <text class="tm" x="352" y="260" text-anchor="end">IP+</text><text class="tm" x="488" y="260">IP&minus;</text>
+      <text class="tm" x="420" y="316" text-anchor="middle">small pins &rarr; step 3</text>
+      <line class="w wl" x1="480" y1="270" x2="560" y2="270"/>
+      <rect x="503" y="276" width="34" height="9" rx="4.5" fill="#b8c0c6" stroke="#6d7780"/><text class="tm" x="520" y="302" text-anchor="middle">T2</text>
+      <rect x="560" y="235" width="140" height="70" rx="6" fill="#1f5fa8"/>
+      <text class="bn" x="630" y="266" text-anchor="middle">RELAY 2</text><text class="bs" x="630" y="284" text-anchor="middle">switches Out 2</text>
+      <text class="tm" x="552" y="260" text-anchor="end">COM</text><text class="tm" x="708" y="260">NO</text>
+      <circle cx="700" cy="292" r="5" fill="none" stroke="var(--muted)" stroke-width="2"/>
+      <text class="tm" x="710" y="296">NC: leave empty</text>
+      <line class="halo" x1="860" y1="270" x2="900" y2="270"/>
+      <line class="w wl" x1="700" y1="270" x2="920" y2="270"/>
+      <circle class="term" cx="360" cy="270" r="5"/><circle class="term" cx="480" cy="270" r="5"/><circle class="term" cx="560" cy="270" r="5"/><circle class="term" cx="700" cy="270" r="5"/>
+
+      <!-- HLK + ZMPT -->
+      <rect x="360" y="370" width="120" height="60" rx="6" fill="#1d1d1d"/>
+      <text class="bn" x="420" y="396" text-anchor="middle">HLK-20M05</text><text class="bs" x="420" y="414" text-anchor="middle">5 V supply</text>
+      <text class="tm" x="352" y="378" text-anchor="end">AC-L</text><text class="tm" x="322" y="430" text-anchor="end">AC-N</text>
+      <text class="tm" x="420" y="448" text-anchor="middle">+Vo / &minus;Vo &rarr; step 2</text>
+      <circle class="term" cx="360" cy="385" r="5"/><circle class="term" cx="360" cy="415" r="5"/>
+      <rect x="600" y="370" width="160" height="60" rx="6" fill="#1d4f91"/>
+      <text class="bn" x="700" y="396" text-anchor="middle">ZMPT101B</text><text class="bs" x="700" y="414" text-anchor="middle">voltage sensor</text>
+      <text class="tm" x="688" y="364">L</text><text class="tm" x="668" y="446">N</text>
+      <text class="tm" x="780" y="404">small pins</text><text class="tm" x="780" y="420">&rarr; step 3</text>
+      <circle class="term" cx="680" cy="370" r="5"/><circle class="term" cx="660" cy="430" r="5"/>
+
+      <!-- sockets -->
+      <text class="t" x="985" y="45" text-anchor="middle" style="font-weight:700">Socket 1 (Out 1)</text>
+      <rect class="sock" x="920" y="55" width="130" height="120" rx="14"/>
+      <circle cx="992" cy="115" r="30" fill="#e8e3d6" stroke="#6f6a60" stroke-width="1.5"/>
+      <circle cx="980" cy="115" r="4" fill="#333"/><circle cx="1004" cy="115" r="4" fill="#333"/>
+      <text class="os" x="930" y="94">L</text><text class="os" x="930" y="134">N</text><text class="os" x="1042" y="168" text-anchor="end">PE</text>
+      <circle class="term" cx="920" cy="90" r="5"/><circle class="term" cx="920" cy="130" r="5"/><circle class="term" cx="1050" cy="150" r="5"/>
+
+      <text class="t" x="985" y="225" text-anchor="middle" style="font-weight:700">Socket 2 (Out 2)</text>
+      <rect class="sock" x="920" y="235" width="130" height="120" rx="14"/>
+      <circle cx="992" cy="295" r="30" fill="#e8e3d6" stroke="#6f6a60" stroke-width="1.5"/>
+      <circle cx="980" cy="295" r="4" fill="#333"/><circle cx="1004" cy="295" r="4" fill="#333"/>
+      <text class="os" x="930" y="274">L</text><text class="os" x="930" y="314">N</text><text class="os" x="1042" y="348" text-anchor="end">PE</text>
+      <circle class="term" cx="920" cy="270" r="5"/><circle class="term" cx="920" cy="310" r="5"/><circle class="term" cx="1050" cy="330" r="5"/>
+
+      <circle class="term" cx="120" cy="230" r="5"/><circle class="term" cx="120" cy="265" r="5"/><circle class="term" cx="120" cy="300" r="5"/>
+    </svg>
+    </div>
+    <figcaption><b>T1, T2:</b> temperature probe tips, zip-tied to the wire insulation where it enters the ACS712 and relay terminals (step 6). <b>Wall switches:</b> mount one beside each socket, but their wires go only to the ESP32 board (step 5), never to anything in this drawing. A dot means the wires are joined. Where two wires cross without a dot, they are <b>not</b> connected (the brown wire to Socket 2 passes over the blue neutral).</figcaption>
+  </figure>
+  <div class="cols">
+    <div class="card">
+      <h3>Checklist</h3>
+      <ul>
+        <li>Use the relay's <b>NO</b> terminal. If the ESP32 fails, the outlets switch off.</li>
+        <li>Connect both ACS712s the same way round: supply goes into <b>IP+</b>.</li>
+        <li>Earth goes straight to both sockets. Never switch it.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Good to know</h3>
+      <p>Schuko plugs fit either way round, so the "L" wire is sometimes neutral. An outlet that is switched off can still have live on one pin. Always unplug an appliance before opening it.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ STEP 2 POWER ============ -->
+<section id="power">
+  <div class="step">STEP 2 &middot; LOW VOLTAGE</div>
+  <h2>Power rails: 5 V and GND</h2>
+  <p>The HLK-20M05 turns 220&nbsp;V into 5&nbsp;V. Run two rails on your perfboard, one for +5&nbsp;V and one for GND, and connect every board to both.</p>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 1110 470" role="img" aria-label="The HLK-20M05 +Vo feeds a 5 V rail and -Vo a GND rail; the ESP32, both relays, both ACS712 and the ZMPT101B each connect to both rails.">
+      <rect x="30" y="180" width="150" height="100" rx="6" fill="#1d1d1d"/>
+      <text class="bn" x="105" y="226" text-anchor="middle">HLK-20M05</text>
+      <text class="bs" x="105" y="244" text-anchor="middle">220 V in &rarr; 5 V out</text>
+      <text class="bp" x="172" y="209" text-anchor="end">+Vo</text><text class="bp" x="172" y="259" text-anchor="end">&minus;Vo</text>
+
+      <polyline class="w w5" points="180,205 210,205 210,60 1040,60"/>
+      <polyline class="w wg" points="180,255 210,255 210,420 1040,420"/>
+      <text x="230" y="46" style="font:700 14px var(--mono);fill:var(--w-5v)">+5 V RAIL</text>
+      <text x="230" y="448" style="font:700 14px var(--mono);fill:var(--w-gnd)">GND RAIL</text>
+      <circle class="term" cx="180" cy="205" r="5"/><circle class="term" cx="180" cy="255" r="5"/>
+
+      <!-- modules: x = 260 + i*140, center +60 -->
+      <g>
+        <line class="w w5" x1="320" y1="60" x2="320" y2="170"/><line class="w wg" x1="320" y1="310" x2="320" y2="420"/>
+        <circle class="f5" cx="320" cy="60" r="6"/><circle class="fg" cx="320" cy="420" r="6"/>
+        <rect x="260" y="170" width="120" height="140" rx="6" fill="#1e2a3a"/>
+        <text class="bp" x="320" y="190" text-anchor="middle">VIN</text><text class="bp" x="320" y="302" text-anchor="middle">GND</text>
+        <text class="bn" x="320" y="244" text-anchor="middle">ESP32</text>
+      </g>
+      <g>
+        <line class="w w5" x1="460" y1="60" x2="460" y2="170"/><line class="w wg" x1="460" y1="310" x2="460" y2="420"/>
+        <circle class="f5" cx="460" cy="60" r="6"/><circle class="fg" cx="460" cy="420" r="6"/>
+        <rect x="400" y="170" width="120" height="140" rx="6" fill="#1f5fa8"/>
+        <text class="bp" x="460" y="190" text-anchor="middle">DC+</text><text class="bp" x="460" y="302" text-anchor="middle">DC&minus;</text>
+        <text class="bn" x="460" y="244" text-anchor="middle">RELAY 1</text>
+      </g>
+      <g>
+        <line class="w w5" x1="600" y1="60" x2="600" y2="170"/><line class="w wg" x1="600" y1="310" x2="600" y2="420"/>
+        <circle class="f5" cx="600" cy="60" r="6"/><circle class="fg" cx="600" cy="420" r="6"/>
+        <rect x="540" y="170" width="120" height="140" rx="6" fill="#1f5fa8"/>
+        <text class="bp" x="600" y="190" text-anchor="middle">DC+</text><text class="bp" x="600" y="302" text-anchor="middle">DC&minus;</text>
+        <text class="bn" x="600" y="244" text-anchor="middle">RELAY 2</text>
+      </g>
+      <g>
+        <line class="w w5" x1="740" y1="60" x2="740" y2="170"/><line class="w wg" x1="740" y1="310" x2="740" y2="420"/>
+        <circle class="f5" cx="740" cy="60" r="6"/><circle class="fg" cx="740" cy="420" r="6"/>
+        <rect x="680" y="170" width="120" height="140" rx="6" fill="#b3261e"/>
+        <text class="bp" x="740" y="190" text-anchor="middle">VCC</text><text class="bp" x="740" y="302" text-anchor="middle">GND</text>
+        <text class="bn" x="740" y="244" text-anchor="middle">ACS712 #1</text>
+      </g>
+      <g>
+        <line class="w w5" x1="880" y1="60" x2="880" y2="170"/><line class="w wg" x1="880" y1="310" x2="880" y2="420"/>
+        <circle class="f5" cx="880" cy="60" r="6"/><circle class="fg" cx="880" cy="420" r="6"/>
+        <rect x="820" y="170" width="120" height="140" rx="6" fill="#b3261e"/>
+        <text class="bp" x="880" y="190" text-anchor="middle">VCC</text><text class="bp" x="880" y="302" text-anchor="middle">GND</text>
+        <text class="bn" x="880" y="244" text-anchor="middle">ACS712 #2</text>
+      </g>
+      <g>
+        <line class="w w5" x1="1020" y1="60" x2="1020" y2="170"/><line class="w wg" x1="1020" y1="310" x2="1020" y2="420"/>
+        <rect x="960" y="170" width="120" height="140" rx="6" fill="#1d4f91"/>
+        <text class="bp" x="1020" y="190" text-anchor="middle">VCC</text><text class="bp" x="1020" y="302" text-anchor="middle">GND</text>
+        <text class="bn" x="1020" y="244" text-anchor="middle">ZMPT101B</text>
+      </g>
+    </svg>
+    </div>
+    <figcaption>Relay boards may label their pins VCC/GND instead of DC+/DC&minus;. The GND rail also collects the resistors, capacitors, switches and probes from steps 3 to 6. Touch modules and temperature probes take their power from the ESP32&rsquo;s <b>3V3</b> pin instead of the 5&nbsp;V rail, because their signal voltage equals their supply.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ STEP 3 SENSORS ============ -->
+<section id="sensors">
+  <div class="step">STEP 3 &middot; LOW VOLTAGE</div>
+  <h2>Sensors: one resistor divider each</h2>
+  <p>The sensors put out up to about 4&nbsp;V, and the ESP32 takes at most 3.3&nbsp;V. Two resistors scale the signal down to a safe range, and a small capacitor keeps the reading clean. Build this same little circuit <b>three times</b>.</p>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 900 350" role="img" aria-label="Sensor OUT goes through a 10 kilo-ohm resistor to the ESP32 pin; from that junction a 15 kilo-ohm resistor and a 10 nF capacitor each go to GND.">
+      <rect x="30" y="70" width="170" height="170" rx="6" fill="#3b3f45"/>
+      <text class="bn" x="105" y="145" text-anchor="middle">SENSOR</text>
+      <text class="bs" x="105" y="163" text-anchor="middle">ACS712 or ZMPT101B</text>
+      <text class="bp" x="192" y="109" text-anchor="end">VCC</text><text class="bp" x="192" y="159" text-anchor="end">OUT</text><text class="bp" x="192" y="209" text-anchor="end">GND</text>
+
+      <line class="w w5" x1="200" y1="105" x2="250" y2="105"/><text class="t" x="258" y="109">+5 V rail</text>
+      <line class="w wg" x1="200" y1="205" x2="250" y2="205"/><text class="t" x="258" y="209">GND rail</text>
+      <circle class="term" cx="200" cy="105" r="5"/><circle class="term" cx="200" cy="155" r="5"/><circle class="term" cx="200" cy="205" r="5"/>
+
+      <line class="w ws" x1="200" y1="155" x2="330" y2="155"/>
+      <text class="tbad" x="265" y="143" text-anchor="middle">up to ~4 V</text>
+
+      <!-- R1 horizontal 10k -->
+      <line class="lead" x1="330" y1="155" x2="352" y2="155"/><line class="lead" x1="428" y1="155" x2="450" y2="155"/>
+      <rect x="352" y="145" width="76" height="20" rx="8" fill="#e6cf9f" stroke="#9c8558"/>
+      <rect x="362" y="145" width="6" height="20" fill="#7a4a1e"/><rect x="374" y="145" width="6" height="20" fill="#111"/>
+      <rect x="386" y="145" width="6" height="20" fill="#f08a00"/><rect x="412" y="145" width="6" height="20" fill="#c9a227"/>
+      <text class="t" x="390" y="130" text-anchor="middle" style="font-weight:700">10 k&Omega;</text>
+
+      <line class="w ws" x1="450" y1="155" x2="760" y2="155"/>
+      <polyline class="w ws" points="520,155 520,195"/>
+      <polyline class="w ws" points="460,215 460,195 600,195 600,239"/>
+      <circle class="fs" cx="520" cy="155" r="6"/><circle class="fs" cx="520" cy="195" r="6"/>
+      <text class="tok" x="660" y="143" text-anchor="middle">0.6 &ndash; 2.4 V: safe</text>
+
+      <!-- R2 vertical 15k -->
+      <rect x="450" y="215" width="20" height="76" rx="8" fill="#e6cf9f" stroke="#9c8558"/>
+      <rect x="450" y="225" width="20" height="6" fill="#7a4a1e"/><rect x="450" y="237" width="20" height="6" fill="#2f9e44"/>
+      <rect x="450" y="249" width="20" height="6" fill="#f08a00"/><rect x="450" y="275" width="20" height="6" fill="#c9a227"/>
+      <line class="lead" x1="460" y1="291" x2="460" y2="318"/>
+      <text class="t" x="438" y="252" text-anchor="end" style="font-weight:700">15 k&Omega;</text>
+
+      <!-- C 10nF -->
+      <line class="lead" x1="600" y1="239" x2="600" y2="241"/>
+      <circle cx="600" cy="257" r="16" fill="#d9822b" stroke="#8a4f14"/>
+      <text x="600" y="261" text-anchor="middle" style="font:700 10px var(--mono);fill:#fff">103</text>
+      <line class="lead" x1="600" y1="273" x2="600" y2="318"/>
+      <text class="t" x="626" y="252" style="font-weight:700">10 nF</text>
+      <text class="tm" x="626" y="268">printed "103"</text>
+
+      <!-- GND symbols -->
+      <line class="gsym" x1="446" y1="320" x2="474" y2="320"/><line class="gsym" x1="451" y1="327" x2="469" y2="327"/><line class="gsym" x1="456" y1="334" x2="464" y2="334"/>
+      <line class="gsym" x1="586" y1="320" x2="614" y2="320"/><line class="gsym" x1="591" y1="327" x2="609" y2="327"/><line class="gsym" x1="596" y1="334" x2="604" y2="334"/>
+      <text class="tm" x="530" y="340" text-anchor="middle">GND</text>
+
+      <rect x="760" y="95" width="120" height="120" rx="6" fill="#1e2a3a"/>
+      <text class="bn" x="820" y="192" text-anchor="middle">ESP32</text>
+      <text class="bp" x="772" y="159">GPIO</text>
+      <circle class="term" cx="760" cy="155" r="5"/>
+    </svg>
+    </div>
+    <figcaption>The 15&nbsp;k&Omega; resistor and the 10&nbsp;nF capacitor go on the ESP32 side of the 10&nbsp;k&Omega; resistor. Place them close to the ESP32 pin.</figcaption>
+  </figure>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Sensor</th><th>Its OUT pin goes through the divider to</th><th>What it measures</th></tr></thead>
+      <tbody>
+        <tr><td>ZMPT101B</td><td><b class="mono">GPIO 36</b> (printed <span class="mono">VP</span>)</td><td>Mains voltage (shared by both outlets)</td></tr>
+        <tr><td>ACS712 #1</td><td><b class="mono">GPIO 39</b> (printed <span class="mono">VN</span>)</td><td>Current of Out 1</td></tr>
+        <tr><td>ACS712 #2</td><td><b class="mono">GPIO 34</b> (printed <span class="mono">D34</span>)</td><td>Current of Out 2</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="cols">
+    <div class="card">
+      <h3>Reading the resistors</h3>
+      <p>10&nbsp;k&Omega;: brown, black, orange <span class="band" aria-hidden="true"><b style="background:#7a4a1e"></b><b style="background:#111"></b><b style="background:#f08a00"></b><b style="background:#c9a227"></b></span></p>
+      <p>15&nbsp;k&Omega;: brown, green, orange <span class="band" aria-hidden="true"><b style="background:#7a4a1e"></b><b style="background:#2f9e44"></b><b style="background:#f08a00"></b><b style="background:#c9a227"></b></span></p>
+      <p>If you aren't sure, check with the multimeter on its &Omega; setting.</p>
+    </div>
+    <div class="card">
+      <h3>ZMPT101B adjustment</h3>
+      <p>The ZMPT101B board has a small blue trim knob. After the mains is connected (bring-up step 3), turn it until the output swings about &plusmn;1&nbsp;V around its middle at 220&nbsp;V. That leaves headroom up to 250&nbsp;V.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ STEP 4 RELAYS ============ -->
+<section id="relays">
+  <div class="step">STEP 4 &middot; LOW VOLTAGE</div>
+  <h2>Relays: one control wire each</h2>
+  <p>Each relay needs 5&nbsp;V, GND (from step 2) and one control wire from the ESP32. Before you power up, set the jumper on each relay board to <b>H</b> (high-level trigger).</p>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 1000 330" role="img" aria-label="ESP32 GPIO 26 connects to relay IN; relay DC+ and DC- to 5 V and GND; trigger jumper on H; mains terminals COM and NO on the other side, NC unused.">
+      <rect x="30" y="80" width="150" height="150" rx="6" fill="#1e2a3a"/>
+      <text class="bn" x="105" y="130" text-anchor="middle">ESP32</text>
+      <text class="bp" x="170" y="159" text-anchor="end">GPIO 26</text>
+      <circle class="term" cx="180" cy="155" r="5"/>
+
+      <polyline class="w wc" points="180,155 230,155 230,210 330,210"/>
+      <line class="w w5" x1="290" y1="110" x2="330" y2="110"/><text class="t" x="284" y="114" text-anchor="end">5 V</text>
+      <line class="w wg" x1="290" y1="160" x2="330" y2="160"/><text class="t" x="284" y="164" text-anchor="end">GND</text>
+
+      <rect x="330" y="60" width="390" height="210" rx="8" fill="#1f5fa8"/>
+      <text class="bs" x="345" y="80">LOW VOLTAGE SIDE</text>
+      <text class="bs" x="705" y="80" text-anchor="end">220 V SIDE</text>
+      <text class="bp" x="345" y="114">DC+</text><text class="bp" x="345" y="164">DC&minus;</text><text class="bp" x="345" y="214">IN</text>
+      <circle class="term" cx="330" cy="110" r="5"/><circle class="term" cx="330" cy="160" r="5"/><circle class="term" cx="330" cy="210" r="5"/>
+
+      <rect x="470" y="95" width="140" height="105" rx="4" fill="#0e2f60"/>
+      <text class="bn" x="540" y="145" text-anchor="middle">RELAY</text><text class="bs" x="540" y="163" text-anchor="middle">30 A contacts</text>
+      <rect x="400" y="120" width="44" height="26" rx="2" fill="#111"/><text class="bs" x="422" y="137" text-anchor="middle">opto</text>
+
+      <!-- jumper -->
+      <text class="bp" x="384" y="236" text-anchor="middle">L</text><text class="bp" x="424" y="236" text-anchor="middle">H</text>
+      <rect x="378" y="242" width="12" height="12" fill="#ccc"/><rect x="398" y="242" width="12" height="12" fill="#ccc"/><rect x="418" y="242" width="12" height="12" fill="#ccc"/>
+      <rect x="395" y="239" width="38" height="18" rx="3" fill="#f2c200" stroke="#7a6200"/>
+      <text class="t" x="404" y="296" text-anchor="middle" style="font-weight:700">Jumper cap on H</text>
+      <line x1="404" y1="282" x2="412" y2="262" stroke="var(--ink)" stroke-width="1.5"/>
+
+      <!-- screw terminals -->
+      <rect x="670" y="92" width="36" height="136" rx="3" fill="#2e7d32"/>
+      <circle class="term" cx="688" cy="110" r="7"/><circle class="term" cx="688" cy="160" r="7"/><circle class="term" cx="688" cy="210" r="7"/>
+      <line class="w wl" x1="695" y1="110" x2="790" y2="110"/><text class="t" x="798" y="114">NO &rarr; socket L</text>
+      <line class="w wl" x1="695" y1="160" x2="790" y2="160"/><text class="t" x="798" y="164">COM &larr; ACS712 IP&minus;</text>
+      <text class="tm" x="798" y="214">NC: leave empty</text>
+    </svg>
+    </div>
+    <figcaption>Relay 2 is wired the same way, but its IN pin goes to <b class="mono">GPIO 27</b>. Jumper and pin names can vary a little between boards. Look for the trigger jumper marked H/L or HIGH/LOW, and leave the JD-VCC&ndash;VCC jumper (if your board has one) in place.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ STEP 5 SWITCHES ============ -->
+<section id="switches">
+  <div class="step">STEP 5 &middot; LOW VOLTAGE</div>
+  <h2>Wall switches or touch buttons</h2>
+  <p>Each outlet gets one physical control beside its socket: a rocker switch or a touch button. Choose which on the strip's web page under <i>Settings &rarr; Outlets &rarr; Physical control</i> (or <i>Disabled</i>). A rocker simply connects an ESP32 pin to GND. Use the 2-terminal switches; it doesn't matter which leg goes where, and flipping it either way toggles the outlet.</p>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 900 290" role="img" aria-label="GPIO 25 goes to one switch leg, the other leg to GND; a 100 nF capacitor sits between GPIO 25 and GND.">
+      <rect x="30" y="70" width="150" height="160" rx="6" fill="#1e2a3a"/>
+      <text class="bn" x="105" y="160" text-anchor="middle">ESP32</text>
+      <text class="bp" x="170" y="114" text-anchor="end">GPIO 25</text><text class="bp" x="170" y="204" text-anchor="end">GND</text>
+      <circle class="term" cx="180" cy="110" r="5"/><circle class="term" cx="180" cy="200" r="5"/>
+
+      <line class="w wsw" x1="180" y1="110" x2="560" y2="110"/>
+      <line class="w wg" x1="180" y1="200" x2="560" y2="200"/>
+      <circle class="fsw" cx="300" cy="110" r="6"/><circle class="fg" cx="300" cy="200" r="6"/>
+      <line class="lead" x1="300" y1="110" x2="300" y2="139"/>
+      <circle cx="300" cy="155" r="16" fill="#d9822b" stroke="#8a4f14"/>
+      <text x="300" y="159" text-anchor="middle" style="font:700 10px var(--mono);fill:#fff">104</text>
+      <line class="lead" x1="300" y1="171" x2="300" y2="200"/>
+      <text class="t" x="326" y="152" style="font-weight:700">100 nF</text>
+      <text class="tm" x="326" y="168">printed "104", near the ESP32</text>
+
+      <text class="t" x="630" y="46" text-anchor="middle" style="font-weight:700">Switch 1</text>
+      <rect class="sock" x="560" y="60" width="140" height="180" rx="14"/>
+      <rect x="600" y="95" width="60" height="110" rx="8" fill="#fbfaf6" stroke="#6f6a60" stroke-width="1.5"/>
+      <line x1="600" y1="150" x2="660" y2="150" stroke="#6f6a60" stroke-width="1.5"/>
+      <circle class="term" cx="560" cy="110" r="6"/><circle class="term" cx="560" cy="200" r="6"/>
+      <text class="os" x="572" y="94">leg 1</text><text class="os" x="572" y="228">leg 2</text>
+
+      <text class="tbad" x="730" y="130">Never connect</text>
+      <text class="tbad" x="730" y="148">to mains.</text>
+      <text class="tm" x="730" y="176">Low voltage only.</text>
+    </svg>
+    </div>
+    <figcaption>Switch 2 is wired the same way to <b class="mono">GPIO 33</b>, with its own 100&nbsp;nF capacitor. You don't need a resistor because the ESP32 has a built-in pull-up.</figcaption>
+  </figure>
+  <div class="card">
+    <h3>Touch button instead of a switch</h3>
+    <p>A TTP223 touch module behind a blank plate cover works too. Hold a finger on the cover for 3 seconds (adjustable per outlet) and the outlet toggles; the relay click confirms it.</p>
+    <table>
+      <thead><tr><th>Touch module</th><th>Connect to</th></tr></thead>
+      <tbody>
+        <tr><td>VCC</td><td>ESP32 <b>3V3</b> (not 5&nbsp;V)</td></tr>
+        <tr><td>GND</td><td>GND</td></tr>
+        <tr><td>SIG / I/O</td><td><b class="mono">GPIO 25</b> (Out&nbsp;1) or <b class="mono">GPIO 33</b> (Out&nbsp;2)</td></tr>
+      </tbody>
+    </table>
+    <ul>
+      <li>No 100&nbsp;nF capacitor and no resistor for a touch module.</li>
+      <li>Leave the small A/B solder pads on the module unconnected.</li>
+      <li>Tape the pad flat against the inside of the cover, with no air gap.</li>
+      <li>Don't touch the pad while the strip powers up: the module calibrates then.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ STEP 6 PROBES ============ -->
+<section id="probes">
+  <div class="step">STEP 6 &middot; LOW VOLTAGE</div>
+  <h2>Temperature probes</h2>
+  <p>Two waterproof DS18B20 probes watch the spots most likely to overheat: the screw terminals where each outlet's wire enters its ACS712 and relay. If any probe reaches 70&nbsp;&deg;C, or a probe stops answering, every outlet switches off. All probes share one data pin and <b>one</b> 4.7&nbsp;k&Omega; resistor.</p>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 900 350" role="img" aria-label="Both probes connect in parallel: red to 3V3, data to GPIO 32, black to GND, with one 4.7 kilo-ohm resistor from GPIO 32 to 3V3.">
+      <rect x="30" y="70" width="150" height="180" rx="6" fill="#1e2a3a"/>
+      <text class="bn" x="80" y="165" text-anchor="middle">ESP32</text>
+      <text class="bp" x="170" y="104" text-anchor="end">3V3</text><text class="bp" x="170" y="164" text-anchor="end">GPIO 32</text><text class="bp" x="170" y="224" text-anchor="end">GND</text>
+      <circle class="term" cx="180" cy="100" r="5"/><circle class="term" cx="180" cy="160" r="5"/><circle class="term" cx="180" cy="220" r="5"/>
+
+      <line class="w w5" x1="180" y1="100" x2="760" y2="100"/>
+      <line class="w w1w" x1="180" y1="160" x2="760" y2="160"/>
+      <line class="w wg" x1="180" y1="220" x2="760" y2="220"/>
+      <text class="t" x="770" y="104">red</text><text class="t" x="770" y="164">data (yellow)</text><text class="t" x="770" y="224">black</text>
+
+      <!-- 4.7k pull-up -->
+      <line class="lead" x1="260" y1="100" x2="260" y2="112"/><line class="lead" x1="260" y1="148" x2="260" y2="160"/>
+      <rect x="250" y="112" width="20" height="36" rx="7" fill="#e6cf9f" stroke="#9c8558"/>
+      <rect x="250" y="117" width="20" height="4" fill="#e8c400"/><rect x="250" y="124" width="20" height="4" fill="#7b3fc4"/>
+      <rect x="250" y="131" width="20" height="4" fill="#d7261e"/><rect x="250" y="141" width="20" height="4" fill="#c9a227"/>
+      <circle class="f5" cx="260" cy="100" r="6"/><circle class="f1w" cx="260" cy="160" r="6"/>
+      <text class="t" x="282" y="130" style="font-weight:700">4.7 k&Omega;</text>
+      <text class="tm" x="282" y="146">one for all probes</text>
+
+      <!-- probe 1 -->
+      <line class="halo" x1="450" y1="150" x2="450" y2="170"/><line class="halo" x1="450" y1="210" x2="450" y2="230"/><line class="halo" x1="460" y1="210" x2="460" y2="230"/>
+      <line class="w w5" x1="450" y1="100" x2="450" y2="262"/>
+      <line class="w w1w" x1="460" y1="160" x2="460" y2="262"/>
+      <line class="w wg" x1="470" y1="220" x2="470" y2="262"/>
+      <circle class="f5" cx="450" cy="100" r="5"/><circle class="f1w" cx="460" cy="160" r="5"/><circle class="fg" cx="470" cy="220" r="5"/>
+      <rect x="444" y="260" width="32" height="30" rx="4" fill="#222"/>
+      <rect x="450" y="290" width="20" height="40" rx="5" fill="#b8c0c6" stroke="#6d7780"/>
+      <text class="t" x="486" y="300" style="font-weight:700">Probe 1</text><text class="tm" x="486" y="316">tip on Out 1 wire insulation</text>
+
+      <!-- probe 2 -->
+      <line class="halo" x1="630" y1="150" x2="630" y2="170"/><line class="halo" x1="630" y1="210" x2="630" y2="230"/><line class="halo" x1="640" y1="210" x2="640" y2="230"/>
+      <line class="w w5" x1="630" y1="100" x2="630" y2="262"/>
+      <line class="w w1w" x1="640" y1="160" x2="640" y2="262"/>
+      <line class="w wg" x1="650" y1="220" x2="650" y2="262"/>
+      <circle class="f5" cx="630" cy="100" r="5"/><circle class="f1w" cx="640" cy="160" r="5"/><circle class="fg" cx="650" cy="220" r="5"/>
+      <rect x="624" y="260" width="32" height="30" rx="4" fill="#222"/>
+      <rect x="630" y="290" width="20" height="40" rx="5" fill="#b8c0c6" stroke="#6d7780"/>
+      <text class="t" x="666" y="300" style="font-weight:700">Probe 2</text><text class="tm" x="666" y="316">tip on Out 2 wire insulation</text>
+    </svg>
+    </div>
+    <figcaption>The two probes connect in parallel to the same three wires. The red wire here is 3.3&nbsp;V from the ESP32's 3V3 pin, <b>not</b> the 5&nbsp;V rail. The 4.7&nbsp;k&Omega; resistor is yellow-violet-red.</figcaption>
+  </figure>
+  <div class="cols">
+    <div class="card">
+      <h3>Before fixing them in place</h3>
+      <ul>
+        <li>Check the wire colours on the probe's listing. Usually red&nbsp;=&nbsp;3V3, black&nbsp;=&nbsp;GND, yellow&nbsp;=&nbsp;data. <b>Reversed power makes a DS18B20 very hot within seconds.</b></li>
+        <li>Power up. Within 30 seconds both probes appear on the strip's web page under <i>Settings &rarr; Overheat protection</i>.</li>
+        <li>Warm one in your hand to see which reading rises, and name it (e.g. "Out 1 terminals").</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Mounting</h3>
+      <ul>
+        <li>Zip-tie each steel tip to the <b>insulation</b> of the outlet's wire, right where it enters the ACS712 or relay screw terminal.</li>
+        <li>Never against bare metal or a terminal screw.</li>
+        <li>Route the probe cable along the low-voltage side back to the ESP32.</li>
+        <li>If you remove or replace a probe, click <i>Forget</i> for it on the web page. Otherwise the strip treats it as a failed probe and switches everything off.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ESP32 PINOUT ============ -->
+<section id="esp32">
+  <h2>ESP32 pins at a glance</h2>
+  <p>This is the 30-pin ESP32 DevKit V1 seen from the top, with the USB port at the bottom. Labels match what is printed on the board. Clones sometimes order the pins differently, so match by the <b>printed label</b>, not the position.</p>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 1000 680" role="img" aria-label="ESP32 DevKit pinout with used pins highlighted: VP, VN, D34 sensors; D32 temperature probes; D33, D25 switches or touch; D26, D27 relays; GND, VIN and 3V3 power.">
+      <rect x="400" y="20" width="200" height="640" rx="10" fill="#1e2a3a"/>
+      <rect x="440" y="36" width="120" height="200" rx="4" fill="#a3abb3"/>
+      <text x="500" y="140" text-anchor="middle" style="font:700 11px var(--mono);fill:#333">ESP-WROOM-32</text>
+      <rect x="470" y="640" width="60" height="30" rx="4" fill="#c4c9ce"/>
+      <text class="bs" x="500" y="630" text-anchor="middle">USB</text>
+
+      <!-- left pins (y = 90 + 36*i) -->
+      <g class="bp">
+        <text x="424" y="94">EN</text><text x="424" y="130">VP</text><text x="424" y="166">VN</text><text x="424" y="202">D34</text>
+        <text x="424" y="238">D35</text><text x="424" y="274">D32</text><text x="424" y="310">D33</text><text x="424" y="346">D25</text>
+        <text x="424" y="382">D26</text><text x="424" y="418">D27</text><text x="424" y="454">D14</text><text x="424" y="490">D12</text>
+        <text x="424" y="526">D13</text><text x="424" y="562">GND</text><text x="424" y="598">VIN</text>
+      </g>
+      <g class="bp" text-anchor="end">
+        <text x="576" y="94">D23</text><text x="576" y="130">D22</text><text x="576" y="166">TX0</text><text x="576" y="202">RX0</text>
+        <text x="576" y="238">D21</text><text x="576" y="274">D19</text><text x="576" y="310">D18</text><text x="576" y="346">D5</text>
+        <text x="576" y="382">TX2</text><text x="576" y="418">RX2</text><text x="576" y="454">D4</text><text x="576" y="490">D2</text>
+        <text x="576" y="526">D15</text><text x="576" y="562">GND</text><text x="576" y="598">3V3</text>
+      </g>
+      <g class="term">
+        <circle cx="410" cy="90" r="4"/><circle cx="410" cy="234" r="4"/><circle cx="410" cy="270" r="4"/>
+        <circle cx="410" cy="450" r="4"/><circle cx="410" cy="486" r="4"/><circle cx="410" cy="522" r="4"/>
+        <circle cx="590" cy="90" r="4"/><circle cx="590" cy="162" r="4"/><circle cx="590" cy="198" r="4"/>
+        <circle cx="590" cy="270" r="4"/><circle cx="590" cy="306" r="4"/><circle cx="590" cy="342" r="4"/>
+        <circle cx="590" cy="378" r="4"/><circle cx="590" cy="414" r="4"/><circle cx="590" cy="450" r="4"/>
+        <circle cx="590" cy="522" r="4"/><circle cx="590" cy="594" r="4"/>
+      </g>
+
+      <!-- used, left -->
+      <line class="w ws" x1="250" y1="126" x2="404" y2="126"/><circle class="fs" cx="410" cy="126" r="7"/><text class="t" x="240" y="130" text-anchor="end">ZMPT101B OUT (divider)</text>
+      <line class="w ws" x1="250" y1="162" x2="404" y2="162"/><circle class="fs" cx="410" cy="162" r="7"/><text class="t" x="240" y="166" text-anchor="end">ACS712 #1 OUT (divider)</text>
+      <line class="w ws" x1="250" y1="198" x2="404" y2="198"/><circle class="fs" cx="410" cy="198" r="7"/><text class="t" x="240" y="202" text-anchor="end">ACS712 #2 OUT (divider)</text>
+      <line class="w wsw" x1="250" y1="306" x2="404" y2="306"/><circle class="fsw" cx="410" cy="306" r="7"/><text class="t" x="240" y="310" text-anchor="end">Switch / touch 2</text>
+      <line class="w wsw" x1="250" y1="342" x2="404" y2="342"/><circle class="fsw" cx="410" cy="342" r="7"/><text class="t" x="240" y="346" text-anchor="end">Switch / touch 1</text>
+      <line class="w w1w" x1="250" y1="270" x2="404" y2="270"/><circle class="f1w" cx="410" cy="270" r="7"/><text class="t" x="240" y="274" text-anchor="end">Temp probes (+4.7k to 3V3)</text>
+      <line class="w wc" x1="250" y1="378" x2="404" y2="378"/><circle class="fc" cx="410" cy="378" r="7"/><text class="t" x="240" y="382" text-anchor="end">Relay 1 IN</text>
+      <line class="w wc" x1="250" y1="414" x2="404" y2="414"/><circle class="fc" cx="410" cy="414" r="7"/><text class="t" x="240" y="418" text-anchor="end">Relay 2 IN</text>
+      <line class="w wg" x1="250" y1="558" x2="404" y2="558"/><circle class="fg" cx="410" cy="558" r="7"/><text class="t" x="240" y="562" text-anchor="end">GND rail</text>
+      <line class="w w5" x1="250" y1="594" x2="404" y2="594"/><circle class="f5" cx="410" cy="594" r="7"/><text class="t" x="240" y="598" text-anchor="end">+5 V rail (HLK)</text>
+
+      <!-- right notes -->
+      <line class="w wx" x1="596" y1="126" x2="750" y2="126"/><circle cx="590" cy="126" r="6" fill="var(--muted)"/><text class="tm" x="760" y="130">keep free (display)</text>
+      <line class="w wx" x1="596" y1="234" x2="750" y2="234"/><circle cx="590" cy="234" r="6" fill="var(--muted)"/><text class="tm" x="760" y="238">keep free (display)</text>
+      <line class="w wx" x1="596" y1="486" x2="750" y2="486"/><circle cx="590" cy="486" r="6" fill="var(--muted)"/><text class="tm" x="760" y="490">status LED (built in)</text>
+      <circle class="term" cx="590" cy="558" r="4"/><text class="tm" x="760" y="562">spare GND, optional</text>
+      <line class="w w5" x1="596" y1="594" x2="750" y2="594"/><circle class="f5" cx="590" cy="594" r="6"/><text class="t" x="760" y="598">probes, touch, 4.7k</text>
+    </svg>
+    </div>
+    <figcaption>Coloured pins get a wire. Grey dashed pins are reserved, so leave them free. All other pins stay empty.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ PARTS ============ -->
+<section id="parts">
+  <h2>Parts checklist</h2>
+  <p>Tick items off as you gather them. Your ticks are saved in this browser only.</p>
+  <div class="cols">
+    <div class="card">
+      <h3>Boards</h3>
+      <ul class="checks">
+        <li><label><input type="checkbox" id="p-esp"><span>1&times; ESP32 DevKit V1 (30-pin)</span></label></li>
+        <li><label><input type="checkbox" id="p-hlk"><span>1&times; HLK-20M05 power supply</span></label></li>
+        <li><label><input type="checkbox" id="p-rel"><span>2&times; relay module (TC90-05D-S-C)</span></label></li>
+        <li><label><input type="checkbox" id="p-acs"><span>2&times; ACS712-30A current sensor</span></label></li>
+        <li><label><input type="checkbox" id="p-zmpt"><span>1&times; ZMPT101B voltage sensor</span></label></li>
+        <li><label><input type="checkbox" id="p-sock"><span>2&times; Schuko socket module</span></label></li>
+        <li><label><input type="checkbox" id="p-sw"><span>2&times; wall switch (2-terminal), or 2&times; TTP223 touch module behind blank covers</span></label></li>
+        <li><label><input type="checkbox" id="p-probe"><span>2&times; waterproof DS18B20 temperature probe</span></label></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Small parts</h3>
+      <ul class="checks">
+        <li><label><input type="checkbox" id="p-r10"><span>3&times; 10&nbsp;k&Omega; resistor (brown-black-orange)</span></label></li>
+        <li><label><input type="checkbox" id="p-r15"><span>3&times; 15&nbsp;k&Omega; resistor (brown-green-orange)</span></label></li>
+        <li><label><input type="checkbox" id="p-c10"><span>3&times; 10&nbsp;nF capacitor (printed 103)</span></label></li>
+        <li><label><input type="checkbox" id="p-c100"><span>2&times; 100&nbsp;nF capacitor (printed 104), for rocker switches only</span></label></li>
+        <li><label><input type="checkbox" id="p-r47"><span>1&times; 4.7&nbsp;k&Omega; resistor (yellow-violet-red), for the probes</span></label></li>
+        <li><label><input type="checkbox" id="p-pcb"><span>Perfboard and thin wire for the low-voltage side</span></label></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Mains parts</h3>
+      <ul class="checks">
+        <li><label><input type="checkbox" id="p-fuse"><span>16&nbsp;A fuse or breaker (or reuse an old strip's breaker)</span></label></li>
+        <li><label><input type="checkbox" id="p-wire"><span>1.5&ndash;2.5&nbsp;mm&sup2; wire: brown, blue, green/yellow</span></label></li>
+        <li><label><input type="checkbox" id="p-box"><span>Plastic enclosure, standoffs, cord with strain relief</span></label></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ BRING-UP ============ -->
+<section id="bringup">
+  <h2>Testing order</h2>
+  <div class="cols">
+    <div class="card">
+      <h3>1 &middot; Bench, no mains</h3>
+      <p>Do steps 2 to 6 only. Power the ESP32 from USB, and leave the HLK and all mains terminals unconnected. Check that the relays click and that the switches or touch buttons toggle them.</p>
+    </div>
+    <div class="card">
+      <h3>2 &middot; Measure the dividers</h3>
+      <p>With no load, an ACS712 OUT pin reads about 2.5&nbsp;V and the ESP32 pin after its divider reads about 1.5&nbsp;V. Check all three.</p>
+    </div>
+    <div class="card">
+      <h3>3 &middot; Name the probes</h3>
+      <p>Both probes should appear on the web page within 30 seconds. Warm each in your hand, name it, then zip-tie it in place.</p>
+    </div>
+    <div class="card">
+      <h3>4 &middot; First mains test</h3>
+      <p>Wire step 1 inside the closed enclosure. Test with a lamp or kettle first. Adjust the ZMPT101B knob, then calibrate from the web page.</p>
+    </div>
+    <div class="card">
+      <h3>5 &middot; Burn-in</h3>
+      <p>Run the microwave at full power for 10+ minutes. The probe readings should rise only a few degrees. Afterwards unplug, then feel the ACS712 and relay terminals and the wire joints. If anything is hot, fix it before real use.</p>
+    </div>
+  </div>
+</section>
+
+<footer>Generated from PLAN.md and include/pins.h in the smart-power-strip repo. If they change, this page must be updated.</footer>
+</div>
+
+<script>
+document.querySelectorAll('.checks input').forEach(function (box) {
+  var key = 'wiring-' + box.id;
+  try { box.checked = localStorage.getItem(key) === '1'; } catch (e) {}
+  box.addEventListener('change', function () {
+    try { localStorage.setItem(key, box.checked ? '1' : '0'); } catch (e) {}
+  });
+});
+</script>

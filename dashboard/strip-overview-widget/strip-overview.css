@@ -1,0 +1,118 @@
+/* Smart Power Strip overview widget. Self-contained: ThingsBoard widgets can't share
+   stylesheets. Light palette to match ThingsBoard's default dashboard theme. */
+.ps {
+  --ink: #18201c; --mut: #5d6862; --line: #dde2dc; --card: #ffffff; --soft: #f3f5f2;
+  --on: #1f8a4c; --on-soft: #e3f3e9; --off: #9aa39d; --wait: #c07a00; --wait-soft: #fbf0dc;
+  --accent: #0e6b62; --danger: #c0341d;
+  font-family: Roboto, "Segoe UI", system-ui, sans-serif;
+  color: var(--ink);
+  display: grid;
+  gap: 14px;
+  padding: 4px;
+  height: 100%;
+  overflow: auto;
+  box-sizing: border-box;
+}
+.ps *, .ps *::before, .ps *::after { box-sizing: border-box; }
+
+/* header */
+.ps-head { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; }
+.ps-title { display: flex; gap: 10px; align-items: center; }
+.ps-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--off); box-shadow: 0 0 0 4px #9aa39d33; flex: none; }
+.ps.is-online .ps-dot { background: var(--on); box-shadow: 0 0 0 4px #1f8a4c2e; }
+.ps-name { font-size: 18px; font-weight: 600; }
+.ps-sub { font-size: 12px; color: var(--mut); }
+.ps-status { font-weight: 600; }
+.ps.is-online .ps-status { color: var(--on); }
+.ps-mains { display: flex; flex-wrap: wrap; gap: 8px 22px; }
+.ps-stat { display: grid; grid-template-columns: auto auto; column-gap: 3px; align-items: baseline; }
+.ps-num { font: 600 20px/1.1 "Roboto Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.ps-unit { font-size: 12px; color: var(--mut); }
+.ps-cap { grid-column: 1 / -1; font-size: 11px; color: var(--mut); text-transform: uppercase; letter-spacing: .05em; }
+
+.ps-alert { background: var(--danger); color: #fff; border-radius: 8px; padding: 10px 14px; font-weight: 600; font-size: 14px; }
+.ps-alert[hidden] { display: none; }
+
+/* outlet cards */
+.ps-outlets { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.ps-card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px 10px;
+  display: grid; gap: 10px; cursor: pointer; transition: border-color .15s, box-shadow .15s;
+}
+.ps-card:hover { border-color: #b9c2bb; box-shadow: 0 2px 10px #18201c0f; }
+.ps-card.is-on { border-color: #9fd3b4; background: linear-gradient(var(--on-soft), var(--card) 70%); }
+.ps-card.is-wait { border-color: #ecd09c; background: linear-gradient(var(--wait-soft), var(--card) 70%); }
+.ps-card.is-offline { opacity: .6; }
+.ps-card-top { display: flex; align-items: center; gap: 10px; }
+.ps-plug { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--soft); color: var(--off); flex: none; }
+.ps-plug svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+.ps-card.is-on .ps-plug { background: var(--on); color: #fff; }
+.ps-card.is-wait .ps-plug { background: var(--wait); color: #fff; }
+.ps-card-id { flex: 1; min-width: 0; }
+.ps-card-name { font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ps-card-state { font-size: 12px; color: var(--mut); }
+.ps-card.is-on .ps-card-state { color: var(--on); font-weight: 600; }
+.ps-card.is-wait .ps-card-state { color: var(--wait); font-weight: 600; }
+
+.ps-toggle { position: relative; width: 50px; height: 28px; border: 0; border-radius: 14px; background: #c9cfca; cursor: pointer; flex: none; padding: 0; transition: background .15s; }
+.ps-toggle span { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px #0003; transition: transform .15s; }
+.ps-toggle[aria-checked="true"] { background: var(--on); }
+.ps-card.is-wait .ps-toggle { background: var(--wait); }
+.ps-toggle[aria-checked="true"] span { transform: translateX(22px); }
+.ps-toggle:disabled { cursor: not-allowed; opacity: .5; }
+.ps-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.ps-power { display: flex; align-items: baseline; gap: 4px; }
+.ps-big { font: 600 34px/1 "Roboto Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.ps-big-unit { color: var(--mut); font-size: 14px; }
+.ps-kv { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; border-top: 1px solid var(--line); padding-top: 8px; }
+.ps-kv b { display: block; font: 600 15px "Roboto Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.ps-kv span { font-size: 11px; color: var(--mut); }
+.ps-card-hint { font-size: 11px; color: var(--accent); text-align: right; }
+.ps-card:hover .ps-card-hint { text-decoration: underline; }
+.ps-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* switching list (history panel) */
+.ps-ev-list { max-height: 260px; overflow: auto; }
+.ps-sec-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--mut); margin: 4px 0 6px; }
+.ps-ev { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--soft); font-size: 13px; }
+.ps-ev:last-child { border-bottom: 0; }
+.ps-ev-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.ps-ev-dot.on { background: var(--on); } .ps-ev-dot.off { background: var(--off); }
+.ps-ev-what { flex: 1; min-width: 0; }
+.ps-ev-src { color: var(--mut); }
+.ps-ev-time { color: var(--mut); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ps-empty { color: var(--mut); font-size: 13px; padding: 10px 0; }
+
+/* history modal */
+.ps-modal[hidden] { display: none; }
+.ps-modal { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 16px; }
+.ps-backdrop { position: absolute; inset: 0; background: #0b100d80; }
+.ps-panel {
+  position: relative; background: var(--card); border-radius: 12px; width: min(720px, 100%); max-height: 90vh;
+  overflow: auto; padding: 16px 20px; display: grid; gap: 12px; box-shadow: 0 12px 40px #0004;
+}
+.ps-panel-head { display: flex; align-items: center; justify-content: space-between; }
+.ps-panel-title { font-size: 17px; font-weight: 600; }
+.ps-close { border: 0; background: none; font-size: 26px; line-height: 1; cursor: pointer; color: var(--mut); }
+.ps-range { display: flex; gap: 6px; }
+.ps-range button, .ps-reset { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 5px 12px; font: inherit; font-size: 13px; cursor: pointer; color: var(--ink); }
+.ps-range button.is-active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.ps-sum { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
+.ps-sum div { background: var(--soft); border-radius: 8px; padding: 8px 10px; }
+.ps-sum b { display: block; font: 600 16px "Roboto Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.ps-sum span { font-size: 11px; color: var(--mut); }
+.ps-chart { width: 100%; height: auto; display: block; }
+.ps-grid { stroke: var(--line); stroke-width: 1; }
+.ps-axis { font: 11px Roboto, sans-serif; fill: var(--mut); }
+.ps-area { fill: #0e6b6222; }
+.ps-line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
+.ps-end { fill: var(--accent); stroke: #fff; stroke-width: 1.5; }
+.ps-timeline { display: flex; height: 16px; border-radius: 4px; overflow: hidden; background: var(--soft); }
+.ps-seg.on { background: var(--on); } .ps-seg.off { background: #d4d9d5; } .ps-seg.none { background: repeating-linear-gradient(45deg, var(--soft) 0 4px, #e6e9e5 4px 8px); }
+.ps-tl-legend { display: flex; gap: 14px; font-size: 11px; color: var(--mut); }
+.ps-tl-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+.ps-tl-legend i.on { background: var(--on); } .ps-tl-legend i.off { background: #d4d9d5; }
+.ps-tl-legend i.none { background: repeating-linear-gradient(45deg, var(--soft) 0 3px, #d8dcd7 3px 6px); }
+.ps-panel-foot { display: flex; justify-content: flex-end; border-top: 1px solid var(--line); padding-top: 10px; }
+.ps-reset.is-armed { background: var(--danger); border-color: var(--danger); color: #fff; }
