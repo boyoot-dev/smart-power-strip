@@ -240,7 +240,7 @@
 
   // ---------- live values (WebSocket) ----------
   var TS_KEYS = ['heartbeat', 'voltage', 'frequency', 'total_power', 'total_current', 'current_fw_version', 'thermal_state'];
-  var ATTR_KEYS = ['ip', 'rssi'];
+  var ATTR_KEYS = ['ip', 'rssi', 'auto_update', 'fw_waiting'];
   var PROBES = [1, 2, 3, 4];
   PROBES.forEach(function(i) { TS_KEYS.push('temp_' + i); ATTR_KEYS.push('temp_' + i + '_name'); });
   var temps = {}, probeNames = {};
@@ -264,11 +264,22 @@
     ['state', 'current', 'power', 'pf', 'energy', 'pending_s'].forEach(function(k) { TS_KEYS.push('out' + n + '_' + k); });
     ATTR_KEYS.push('out' + n + '_name');
   });
-  var meta = { fw: null, ip: null, rssi: null };
+  var meta = { fw: null, ip: null, rssi: null, auto_update: null, fw_waiting: '' };
 
+  // An update assigned in ThingsBoard waits on the strip until its night window, or, with
+  // auto-update off, until someone clicks Install now on the strip's own page.
   function renderMeta() {
-    var bits = [];
-    if (meta.fw) bits.push('fw ' + meta.fw);
+    var bits = [], autoOff = meta.auto_update === false || meta.auto_update === 'false';
+    if (meta.fw) {
+      var fw = 'fw ' + meta.fw;
+      if (meta.fw_waiting) {
+        fw += ' (' + meta.fw_waiting + ' ready, ' +
+          (autoOff ? 'auto-update off: install it on the strip’s page' : 'installs in its update window') + ')';
+      } else if (autoOff) {
+        fw += ' (auto-update off)';
+      }
+      bits.push(fw);
+    }
     if (meta.ip) bits.push(meta.ip);
     if (meta.rssi) bits.push('WiFi ' + meta.rssi + ' dBm');
     $('.ps-meta').textContent = bits.length ? ' · ' + bits.join(' · ') : '';
@@ -310,6 +321,7 @@
     Object.keys(ts).forEach(function(k) { if (ts[k] && ts[k].ts) applyTs(k, ts[k]); });
     Object.keys(at).forEach(function(k) {
       var v = at[k] && at[k].value;
+      if (k === 'fw_waiting') { meta.fw_waiting = v || ''; return; }  // '' = nothing waiting
       if (v === undefined || v === '') return;
       var m = /^out(\d)_name$/.exec(k), pm = /^temp_(\d)_name$/.exec(k);
       if (m) state.names[Number(m[1])] = v;

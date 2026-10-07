@@ -3,7 +3,9 @@
 One ThingsBoard "HTML Card" widget for the whole power strip:
 
 - **Header:** device name, Online/Offline dot, mains voltage and frequency, total power
-  and current, firmware version, IP and WiFi signal.
+  and current, firmware version, IP and WiFi signal. When an assigned update is waiting
+  it shows as e.g. `fw 0.1.7 (0.1.8 ready, installs in its update window)`, or, on a
+  strip with auto-update off, `… auto-update off: install it on the strip’s page`.
 - **One card per outlet:** name (set in the strip's local web page), an on/off switch,
   live watts, amps, power factor and kWh. An outlet waiting out its compressor delay
   shows in amber with a "Turning on in m:ss" countdown.
@@ -32,6 +34,7 @@ One ThingsBoard "HTML Card" widget for the whole power strip:
 | `outN_event` | telemetry, on every switch | Switching list in the history panel (value like `on by button`) |
 | `outN_name`, `ip`, `rssi` | client attributes | Names, header |
 | `current_fw_version` | telemetry (TbLink) | Header |
+| `auto_update`, `fw_waiting` | client attributes, every 60 s | Header: waiting update and why it waits |
 | `temp_1`…`temp_4`, `thermal_state` | telemetry, every 10 s | "Hottest point" (hover for each probe) and the red overheat / probe-fault banner |
 | `temp_N_name` | client attributes | Probe names in the hover text |
 | RPC `setOutlet {outlet, state}`, `resetEnergy {outlet}` | one-way RPC | Switch, reset button |
