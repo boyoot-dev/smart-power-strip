@@ -29,6 +29,9 @@ constexpr float kPowerJumpRatio = 0.10f;
 // a row force a WiFi reconnect. Never a reboot: that would blip the relays.
 constexpr uint32_t kLinkCheckMs = 60000;
 constexpr int kLinkFailsBeforeReset = 2;
+// ThingsBoard doesn't reliably push a new firmware assignment to a connected device, so
+// ask for it again this often (one small message, no restart).
+constexpr uint32_t kFwCheckMs = 30UL * 60 * 1000;
 
 TbLink tb;
 bool tbConfigured = false;
@@ -42,6 +45,10 @@ uint32_t lastTelemetry = 0, lastInfo = 0 - kInfoMs;
 uint32_t restartAt = 0;
 uint32_t lastLinkCheck = 0;
 int linkFails = 0;
+// Written by the net task only, read by the web task under pendingMux.
+portMUX_TYPE pendingMux = portMUX_INITIALIZER_UNLOCKED;
+char pendingFw[32] = "";
+volatile bool installRequested = false;
 float lastSentPower[kOutletCount];
 
 const char* const kOutKeys[kOutletCount] = {"out1", "out2"};
@@ -126,6 +133,27 @@ void linkWatchdog(uint32_t now) {
 
 // ---- ThingsBoard ----
 
+bool inUpdateWindow() {
+  const UpdateConfig& u = Config::update();
+  int h = TimeSync::localHour();
+  if (h < 0) return false;  // clock not synced: the window can't be known
+  if (u.window_start_h == u.window_end_h) return true;
+  if (u.window_start_h < u.window_end_h) return h >= u.window_start_h && h < u.window_end_h;
+  return h >= u.window_start_h || h < u.window_end_h;  // window crosses midnight
+}
+
+bool mayInstallUpdate() {
+  if (installRequested) return true;
+  return Config::update().auto_update && inUpdateWindow();
+}
+
+void publishPendingFw() {
+  String v = tb.pendingOtaVersion();
+  portENTER_CRITICAL(&pendingMux);
+  strlcpy(pendingFw, v.c_str(), sizeof(pendingFw));
+  portEXIT_CRITICAL(&pendingMux);
+}
+
 bool handleRpc(const String& method, JsonVariantConst params, JsonDocument& response) {
   if (method == "setOutlet") {
     int n = params["outlet"] | 0;
@@ -160,8 +188,31 @@ bool handleRpc(const String& method, JsonVariantConst params, JsonDocument& resp
     Metering::resetEnergy((params["outlet"] | 0) - 1);
     return true;
   }
+  // Remote restarts are refused while auto_update is off: that setting promises the
+  // strip never restarts unless someone at the strip asks for it.
   if (method == "reboot") {
+    if (!Config::update().auto_update) {
+      response["error"] = "auto_update is off on this strip; restart it from its local page";
+      return true;
+    }
     Net::scheduleRestart(500);
+    return true;
+  }
+  if (method == "fw_check") {  // re-ask ThingsBoard for the assigned firmware, no restart
+    tb.refreshSharedAttributes();
+    response["current"] = kFwVersion;
+    response["waiting"] = tb.pendingOtaVersion();
+    return true;
+  }
+  if (method == "fw_install") {  // install a waiting update now, outside the window
+    if (!Config::update().auto_update) {
+      response["error"] = "auto_update is off on this strip; install it from its local page";
+    } else if (tb.pendingOtaVersion().isEmpty()) {
+      response["error"] = "no update waiting (try fw_check first)";
+    } else {
+      installRequested = true;
+      response["installing"] = tb.pendingOtaVersion();
+    }
     return true;
   }
   return false;
@@ -205,6 +256,8 @@ void sendInfo() {
   tb.sendAttribute("ip", WiFi.localIP().toString().c_str());
   tb.sendAttribute("rssi", static_cast<int>(WiFi.RSSI()));
   tb.sendAttribute("uptime_s", static_cast<int>(millis() / 1000));
+  tb.sendAttribute("auto_update", Config::update().auto_update);
+  tb.sendAttribute("fw_waiting", tb.pendingOtaVersion().c_str());
   for (int n = 0; n < kOutletCount; n++) {
     char key[16];
     snprintf(key, sizeof(key), "%s_name", kOutKeys[n]);
@@ -260,6 +313,7 @@ void beginTb() {
   char id[24];
   snprintf(id, sizeof(id), "powerstrip-%02x%02x%02x", mac[3], mac[4], mac[5]);
   mqtt.client_id = id;
+  mqtt.attribute_refresh_interval_ms = kFwCheckMs;
 
   TbOtaConfig ota;
   ota.http_host = c.http_host;
@@ -271,8 +325,10 @@ void beginTb() {
 
   tb.onRpc(handleRpc);
   tb.onOtaResult([](bool ok, const String& err) {
+    installRequested = false;
     if (!ok) Serial.printf("OTA failed: %s\n", err.c_str());
   });
+  tb.onOtaGate(mayInstallUpdate);
   tb.begin(mqtt, ota);
   tbConfigured = true;
 }
@@ -295,6 +351,7 @@ void netTask(void*) {
       uint32_t took = millis() - t0;
       if (took > 1000) Serial.printf("net: TbLink loop took %lu ms\n", took);
       cloudUp = tb.connected();
+      publishPendingFw();
       if (cloudUp) {
         sendEvents();
         if (now - lastInfo >= kInfoMs) {
@@ -355,6 +412,20 @@ String apSsid() {
   char buf[24];
   snprintf(buf, sizeof(buf), "PowerStrip-%02X%02X", mac[4], mac[5]);
   return buf;
+}
+
+String pendingUpdate() {
+  char v[sizeof(pendingFw)];
+  portENTER_CRITICAL(&pendingMux);
+  strlcpy(v, pendingFw, sizeof(v));
+  portEXIT_CRITICAL(&pendingMux);
+  return v;
+}
+
+bool installUpdate() {
+  if (pendingUpdate().isEmpty()) return false;
+  installRequested = true;
+  return true;
 }
 
 void scheduleRestart(uint32_t delay_ms) {

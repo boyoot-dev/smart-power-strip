@@ -16,6 +16,7 @@ TbTlsConfig tbTlsCfg;
 OutletConfig outletCfg[kOutletCount];
 CalibConfig calibCfg;
 ThermalConfig thermalCfg;
+UpdateConfig updateCfg;
 bool lastOn[kOutletCount];
 
 template <typename T>
@@ -56,6 +57,24 @@ void loadOutlet(const char* key, OutletConfig* out) {
   }
 }
 
+// Layout before phase correction, migrated on load.
+struct CalibConfigV1 {
+  float v_gain;
+  float i_gain[kOutletCount];
+};
+
+void loadCalib(CalibConfig* out) {
+  size_t len = prefs.isKey("calib") ? prefs.getBytesLength("calib") : 0;
+  if (len == sizeof(CalibConfig)) {
+    prefs.getBytes("calib", out, sizeof(CalibConfig));
+  } else if (len == sizeof(CalibConfigV1)) {
+    CalibConfigV1 v1;
+    prefs.getBytes("calib", &v1, sizeof(v1));
+    out->v_gain = v1.v_gain;
+    memcpy(out->i_gain, v1.i_gain, sizeof(v1.i_gain));
+  }
+}
+
 void outletKey(char* buf, size_t len, const char* prefix, int n) {
   snprintf(buf, len, "%s%d", prefix, n + 1);
 }
@@ -70,8 +89,9 @@ void begin() {
   loadBlob("wifi", &wifiCfg);
   loadBlob("tb", &tbCfg);
   loadBlob("tbtls", &tbTlsCfg);
-  loadBlob("calib", &calibCfg);
+  loadCalib(&calibCfg);
   loadBlob("thermal", &thermalCfg);
+  loadBlob("update", &updateCfg);
   for (int n = 0; n < kOutletCount; n++) {
     char key[8];
     outletKey(key, sizeof(key), "out", n);
@@ -90,12 +110,14 @@ const TbTlsConfig& tbTls() { return tbTlsCfg; }
 const OutletConfig& outlet(int n) { return outletCfg[n]; }
 const CalibConfig& calib() { return calibCfg; }
 const ThermalConfig& thermal() { return thermalCfg; }
+const UpdateConfig& update() { return updateCfg; }
 
 void saveWifi(const WifiConfig& c) { wifiCfg = c; saveBlob("wifi", c); }
 void saveTb(const TbConfig& c) { tbCfg = c; saveBlob("tb", c); }
 void saveTbTls(const TbTlsConfig& c) { tbTlsCfg = c; saveBlob("tbtls", c); }
 void saveCalib(const CalibConfig& c) { calibCfg = c; saveBlob("calib", c); }
 void saveThermal(const ThermalConfig& c) { thermalCfg = c; saveBlob("thermal", c); }
+void saveUpdate(const UpdateConfig& c) { updateCfg = c; saveBlob("update", c); }
 
 void saveOutlet(int n, const OutletConfig& c) {
   char key[8];

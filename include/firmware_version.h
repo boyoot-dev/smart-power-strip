@@ -5,4 +5,4 @@
 // every release meant to be pushed via OTA. kFwTitle must match the package title, or
 // TbLink refuses the package (stops a binary for another board being flashed here).
 constexpr char kFwTitle[] = "smart-power-strip";
-constexpr char kFwVersion[] = "0.1.0";
+constexpr char kFwVersion[] = "0.1.7";

@@ -17,4 +17,10 @@ String apSsid();
 // web response gets out first.
 void scheduleRestart(uint32_t delay_ms = 1500);
 
+// Firmware version assigned in ThingsBoard and waiting to install, or "" if none.
+String pendingUpdate();
+// Local "Install now": installs the waiting update regardless of auto_update and the
+// time window. False if nothing is waiting.
+bool installUpdate();
+
 }  // namespace Net

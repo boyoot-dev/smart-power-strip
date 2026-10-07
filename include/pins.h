@@ -7,9 +7,10 @@
 // unusable while WiFi is active); relays avoid strapping pins so outlets don't click
 // during boot.
 
-constexpr uint8_t kPinVoltageSense = 36;  // ZMPT101B via 10k/15k divider
-constexpr uint8_t kPinCurrent1     = 39;  // ACS712 Out 1 via 10k/15k divider
-constexpr uint8_t kPinCurrent2     = 34;  // ACS712 Out 2 via 10k/15k divider
+constexpr uint8_t kPinVoltageSense = 36;  // ZMPT101B via 10k/10k divider
+constexpr uint8_t kPinCurrent1     = 35;  // ACS712 Out 1 via 10k/10k divider
+constexpr uint8_t kPinCurrent2     = 34;  // ACS712 Out 2 via 10k/10k divider
+// GPIO 39 (VN) unused: the header pin on this board is broken.
 
 constexpr uint8_t kPinRelay1  = 26;  // relay module IN, High-level trigger
 constexpr uint8_t kPinRelay2  = 27;

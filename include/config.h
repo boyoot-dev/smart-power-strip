@@ -61,11 +61,25 @@ struct ThermalConfig {
 };
 
 // Gains convert ADC pin millivolts (after DC offset removal) to volts / amps.
-// Current default: ACS712-30A 66 mV/A x 0.6 divider = 39.6 mV/A at the pin.
-// Voltage default is a placeholder until calibrated (depends on the ZMPT101B trim pot).
+// Current default: ACS712-30A 66 mV/A x 0.5 divider (10k/10k) = 33 mV/A at the pin.
+// Voltage default fits the trim pot as set on the first unit (2026-10-07, checked against
+// a multimeter: 230 V no-load); recalibrate after touching the pot.
+// phase_deg cancels the ZMPT101B's phase shift (it read PF 0.92 on a kettle, ~23 deg);
+// set it with Auto-calibrate phase while a heater runs.
 struct CalibConfig {
-  float v_gain = 0.52f;
-  float i_gain[kOutletCount] = {1.0f / 39.6f, 1.0f / 39.6f};
+  float v_gain = 1.126f;
+  float i_gain[kOutletCount] = {1.0f / 33.0f, 1.0f / 33.0f};
+  float phase_deg = 0.0f;
+};
+
+// Firmware updates from ThingsBoard. Installing restarts the strip, which drops both
+// relays for about a second (and keeps compressor outlets off for min_off_s). With
+// auto_update off the strip never restarts by itself or on a remote command: an update
+// waits until someone clicks Install on the local page, or it isn't installed at all.
+struct UpdateConfig {
+  bool auto_update = true;
+  uint8_t window_start_h = 3;  // local hours [start, end); start == end means any time
+  uint8_t window_end_h = 5;
 };
 
 namespace Config {
@@ -78,6 +92,7 @@ const TbTlsConfig& tbTls();
 const OutletConfig& outlet(int n);
 const CalibConfig& calib();
 const ThermalConfig& thermal();
+const UpdateConfig& update();
 
 void saveWifi(const WifiConfig& c);
 void saveTb(const TbConfig& c);
@@ -85,6 +100,7 @@ void saveTbTls(const TbTlsConfig& c);
 void saveOutlet(int n, const OutletConfig& c);
 void saveCalib(const CalibConfig& c);
 void saveThermal(const ThermalConfig& c);
+void saveUpdate(const UpdateConfig& c);
 
 // Last relay state, for PowerOn::kRestore.
 bool lastState(int n);

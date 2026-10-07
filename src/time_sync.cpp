@@ -29,4 +29,14 @@ String now() {
   return buf;
 }
 
+int localHour() {
+  if (!synced()) {
+    return -1;
+  }
+  time_t t = time(nullptr);
+  struct tm local;
+  localtime_r(&t, &local);
+  return local.tm_hour;
+}
+
 }  // namespace TimeSync

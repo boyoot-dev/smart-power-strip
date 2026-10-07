@@ -8,5 +8,6 @@ namespace TimeSync {
 void begin();
 bool synced();
 String now();  // "YYYY-MM-DD HH:MM:SS" local, or "not synced"
+int localHour();  // 0-23, or -1 if not synced
 
 }  // namespace TimeSync

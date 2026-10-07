@@ -71,7 +71,16 @@ textarea{font:12px ui-monospace,monospace;padding:6px 8px;border:1px solid var(-
 <label data-help="Turns the voltage sensor signal into volts. Measure the socket with a multimeter, then: new gain = old gain &times; (meter &divide; shown)."><span class="lt">Voltage gain (V per mV)</span><input name="v_gain" id="vg" step="any" type="number"></label>
 <label data-help="Turns the Out 1 current sensor signal into amps. The default suits a 30 A ACS712. Correct it with a clamp meter the same way as the voltage."><span class="lt">Out 1 current gain (A per mV)</span><input name="i1_gain" id="i1g" step="any" type="number"></label>
 <label data-help="Same as Out 1, for the Out 2 current sensor."><span class="lt">Out 2 current gain (A per mV)</span><input name="i2_gain" id="i2g" step="any" type="number"></label>
+<label data-help="Cancels the time shift of the voltage sensor, which otherwise makes real power and kWh read low (a kettle shows PF below 1.00). Use Auto-calibrate below rather than typing it."><span class="lt">Phase correction (degrees)</span><input name="phase_deg" id="phd" step="any" type="number" min="-60" max="60"></label>
 <p class="mut">New gain = old gain &times; (meter reading &divide; shown reading).</p>
+<button>Save</button></form>
+<p class="mut" style="margin-top:12px">Auto-calibrate phase: switch on a kettle, heater or iron (not a motor, charger or LED lamp) drawing at least 2 A on either outlet, wait a few seconds, then click.</p>
+<button id="phcal">Auto-calibrate phase</button></details>
+<details><summary>Firmware updates</summary><p id="fwst"></p><button id="fwinst" hidden>Install now</button>
+<form data-api="/api/update-config">
+<label class="ck" data-help="When on, a new version from ThingsBoard installs by itself during the hours below. Installing restarts the strip: both outlets switch off for about a second, and outlets with compressor protection then stay off for their minimum off time. Turn this off if something plugged in must never lose power unexpectedly, such as medical equipment. The strip then never restarts by itself or on a remote command, and an update waits until you click Install now here."><input type="checkbox" name="auto_update" id="auto"><span class="lt">Install updates automatically</span></label>
+<label data-help="Local time, 0-23. Automatic updates only install from the start hour until the end hour, e.g. 3 and 5 means between 03:00 and 04:59. The same start and end means any time."><span class="lt">Install from (hour)</span><input name="window_start_h" id="wst" type="number" min="0" max="23"></label>
+<label data-help="The window closes at this hour. A window can cross midnight, e.g. 23 to 2."><span class="lt">Until (hour)</span><input name="window_end_h" id="wen" type="number" min="0" max="23"></label>
 <button>Save</button></form></details>
 <details><summary>Device</summary><p class="mut" id="dev"></p><button id="reboot">Restart</button></details>
 </main><div id="msg" hidden></div>
@@ -94,17 +103,27 @@ let sock=null,last=[],evs=[];
 function toggle(i){const x=last[i];if(!x)return;x.on=!(x.on||x.pending_s);renderOutlets(last);
   if(sock&&sock.readyState===1)sock.send(JSON.stringify({cmd:'outlet',n:i+1,state:'toggle'}));
   else post('/api/outlet',{n:i+1,state:'toggle'});}
+// A strip that restarts (e.g. a firmware update) never closes the socket, so the browser
+// would keep it "open" with frozen values. Status arrives every second: after 5 s of
+// silence, drop the socket and dial again.
+let lastMsg=Date.now(),pageFw=null;
+setInterval(()=>{if(sock&&Date.now()-lastMsg>5000){const s=sock;sock=null;s.onclose=null;s.close();
+  $('link').textContent='Reconnecting to strip…';lastMsg=Date.now();connect()}},1000);
 function connect(){sock=new WebSocket(`ws://${location.host}/ws`);
   sock.onopen=()=>{$('link').textContent='';events()};
-  sock.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch(_){return}
+  sock.onmessage=e=>{lastMsg=Date.now();let m;try{m=JSON.parse(e.data)}catch(_){return}
     if(m.type==='status')apply(m);else if(m.type==='event'){evs.unshift(m);renderEvents()}};
-  sock.onclose=()=>{$('link').textContent='Reconnecting to strip…';setTimeout(connect,2000)};}
+  sock.onclose=()=>{sock=null;$('link').textContent='Reconnecting to strip…';setTimeout(()=>{lastMsg=Date.now();connect()},2000)};}
 function apply(s){
+  // New firmware may bring a new page: load it rather than run the old one.
+  if(pageFw===null)pageFw=s.fw;else if(s.fw!==pageFw){location.reload();return}
   $('v').textContent=fx(s.voltage,1)+' V';$('f').textContent=fx(s.frequency,2)+' Hz';
   $('tp').textContent=fx(s.total_power,0)+' W';$('ti').textContent=fx(s.total_current,2)+' A';
   $('cloud').textContent=s.cloud?'ThingsBoard connected':'ThingsBoard offline';
-  $('bar').textContent='';[s.wifi?`WiFi ${s.wifi} (${s.rssi} dBm)`:'WiFi not connected',s.ip,s.time,`fw ${s.fw}`].forEach(t=>{const e=document.createElement('span');e.textContent=t;$('bar').appendChild(e)});
-  renderOutlets(s.outlets);renderThermal(s.thermal);}
+  $('bar').textContent='';[s.wifi?`WiFi ${s.wifi} (${s.rssi} dBm)`:'WiFi not connected',s.ip,s.time,`fw ${s.fw}`+(s.fw_waiting?` (${s.fw_waiting} ready)`:'')].forEach(t=>{const e=document.createElement('span');e.textContent=t;$('bar').appendChild(e)});
+  renderOutlets(s.outlets);renderThermal(s.thermal);
+  $('fwst').textContent=s.fw_waiting?`Version ${s.fw_waiting} is ready to install (running ${s.fw}).`:`Running ${s.fw}. No update waiting.`;
+  $('fwinst').hidden=!s.fw_waiting;}
 const THERM_MSG={overheat:'Overheat! All outlets switched off. They can be turned on again once every probe is below ',
   probe_fault:'A temperature probe stopped answering, so all outlets were switched off. Check its wiring, or Forget it in Settings if it was removed.'};
 let probeSig='',limitsSet=false;
@@ -132,7 +151,8 @@ async function loadCfg(){const c=await(await fetch('/api/config')).json();
   $('ssid').value=c.wifi.ssid;$('pwset').textContent=c.wifi.password_set?'(saved)':'';
   $('tbhost').value=c.tb.host;$('tbport').value=c.tb.port;$('tkset').textContent=c.tb.token_set?'(saved)':'';
   $('tbhh').value=c.tb.http_host;$('tbtls').checked=c.tb.use_tls;$('tbca').value=c.tb.ca_cert;$('tbhp').value=c.tb.http_port;
-  $('vg').value=c.calib.v_gain;$('i1g').value=c.calib.i1_gain;$('i2g').value=c.calib.i2_gain;
+  $('auto').checked=c.update.auto_update;$('wst').value=c.update.window_start_h;$('wen').value=c.update.window_end_h;
+  $('vg').value=c.calib.v_gain;$('i1g').value=c.calib.i1_gain;$('i2g').value=c.calib.i2_gain;$('phd').value=c.calib.phase_deg;
   $('dev').textContent=`${c.fw_title} ${c.fw} - setup WiFi: ${c.ap_ssid}`;
   $('ocfg').innerHTML=c.outlets.map((o,i)=>`<form data-api="/api/outlet-config" data-n="${i+1}"><h3>Outlet ${i+1}</h3>
 <label data-help="Shown on this page and in ThingsBoard, e.g. Fridge. It does not change how the outlet behaves."><span class="lt">Name</span><input name="name" maxlength="24"></label>
@@ -154,6 +174,9 @@ function addHelp(){document.querySelectorAll('[data-help]').forEach(l=>{if(l.hel
 function bindForms(){addHelp();document.querySelectorAll('form[data-api]').forEach(f=>{if(f.bound)return;f.bound=true;f.onsubmit=async ev=>{ev.preventDefault();
   const d={};new FormData(f).forEach((v,k)=>d[k]=v);f.querySelectorAll('input[type=checkbox]').forEach(x=>d[x.name]=x.checked?'1':'0');
   if(f.dataset.n)d.n=f.dataset.n;const r=await post(f.dataset.api,d);toast(r.error||(r.restart?'Saved - restarting...':'Saved'));if(!r.restart)loadCfg();}})}
+$('phcal').onclick=()=>post('/api/calib-phase',{}).then(r=>{toast(r.error||'Phase calibrated');if(!r.error)loadCfg()});
+$('fwinst').onclick=()=>{if(confirm('Install the update now? The strip restarts: both outlets switch off for about a second, and outlets with compressor protection stay off for their minimum off time.'))
+  post('/api/install-update',{}).then(r=>toast(r.error||'Installing - the strip restarts in about a minute'))};
 $('reboot').onclick=()=>post('/api/reboot',{}).then(()=>toast('Restarting...'));
 loadCfg();connect();
 </script></body></html>)HTML";

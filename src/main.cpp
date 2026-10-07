@@ -17,7 +17,7 @@
 //                         adds jitter to the sample timing
 //   core 0: control     - switches, compressor-delay release, status LED (prio 4)
 //           net         - WiFi, NTP, ThingsBoard telemetry/RPC/OTA (prio 2)
-//           async_tcp   - web UI (pinned by build flag)
+//           async_tcp   - web UI (unpinned: a TLS handshake hogging core 0 can't starve it)
 //           webpush     - local page WebSocket pushes (prio 3)
 //           thermal     - DS18B20 overheat protection (prio 1)
 //           console     - USB serial provisioning (prio 1)

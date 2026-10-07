@@ -13,6 +13,8 @@ struct OutletReading {
   float va;       // VA (apparent)
   float pf;
   double kwh;
+  float raw_angle_deg;  // V-to-I angle before phase correction, smoothed (+ = I lags);
+                        // on a resistive load this is the sensor phase error
 };
 
 struct Reading {
@@ -30,5 +32,9 @@ namespace Metering {
 void begin();  // starts the task pinned to core 1
 Reading latest();
 void resetEnergy(int outlet);
+
+// Sets CalibConfig::phase_deg from the outlet carrying a resistive load (heater, kettle)
+// right now. False with *err set if no outlet draws enough current to measure it.
+bool calibratePhase(const char** err);
 
 }  // namespace Metering

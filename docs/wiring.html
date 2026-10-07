@@ -169,7 +169,7 @@ footer { margin-top:56px; color:var(--muted); font-size:.9rem; }
       <rect x="410" y="140" width="200" height="50" rx="6" fill="#b3261e"/>
       <text class="bn" x="510" y="163" text-anchor="middle">ACS712 #1</text><text class="bs" x="510" y="180" text-anchor="middle">current, Out 1</text>
       <line class="w ws" x1="610" y1="165" x2="830" y2="165"/>
-      <text class="t" x="840" y="169">OUT &rarr; GPIO 39</text>
+      <text class="t" x="840" y="169">OUT &rarr; GPIO 35</text>
 
       <!-- row 3 ACS2 y=240 -->
       <line class="w wl" x1="180" y1="240" x2="410" y2="240"/>
@@ -418,7 +418,7 @@ footer { margin-top:56px; color:var(--muted); font-size:.9rem; }
   <p>The sensors put out up to about 4&nbsp;V, and the ESP32 takes at most 3.3&nbsp;V. Two resistors scale the signal down to a safe range, and a small capacitor keeps the reading clean. Build this same little circuit <b>three times</b>.</p>
   <figure>
     <div class="scroll">
-    <svg viewBox="0 0 900 350" role="img" aria-label="Sensor OUT goes through a 10 kilo-ohm resistor to the ESP32 pin; from that junction a 15 kilo-ohm resistor and a 10 nF capacitor each go to GND.">
+    <svg viewBox="0 0 900 350" role="img" aria-label="Sensor OUT goes through a 10 kilo-ohm resistor to the ESP32 pin; from that junction a second 10 kilo-ohm resistor and a 10 nF capacitor each go to GND.">
       <rect x="30" y="70" width="170" height="170" rx="6" fill="#3b3f45"/>
       <text class="bn" x="105" y="145" text-anchor="middle">SENSOR</text>
       <text class="bs" x="105" y="163" text-anchor="middle">ACS712 or ZMPT101B</text>
@@ -442,14 +442,14 @@ footer { margin-top:56px; color:var(--muted); font-size:.9rem; }
       <polyline class="w ws" points="520,155 520,195"/>
       <polyline class="w ws" points="460,215 460,195 600,195 600,239"/>
       <circle class="fs" cx="520" cy="155" r="6"/><circle class="fs" cx="520" cy="195" r="6"/>
-      <text class="tok" x="660" y="143" text-anchor="middle">0.6 &ndash; 2.4 V: safe</text>
+      <text class="tok" x="660" y="143" text-anchor="middle">0.5 &ndash; 2.0 V: safe</text>
 
-      <!-- R2 vertical 15k -->
+      <!-- R2 vertical 10k -->
       <rect x="450" y="215" width="20" height="76" rx="8" fill="#e6cf9f" stroke="#9c8558"/>
-      <rect x="450" y="225" width="20" height="6" fill="#7a4a1e"/><rect x="450" y="237" width="20" height="6" fill="#2f9e44"/>
+      <rect x="450" y="225" width="20" height="6" fill="#7a4a1e"/><rect x="450" y="237" width="20" height="6" fill="#111"/>
       <rect x="450" y="249" width="20" height="6" fill="#f08a00"/><rect x="450" y="275" width="20" height="6" fill="#c9a227"/>
       <line class="lead" x1="460" y1="291" x2="460" y2="318"/>
-      <text class="t" x="438" y="252" text-anchor="end" style="font-weight:700">15 k&Omega;</text>
+      <text class="t" x="438" y="252" text-anchor="end" style="font-weight:700">10 k&Omega;</text>
 
       <!-- C 10nF -->
       <line class="lead" x1="600" y1="239" x2="600" y2="241"/>
@@ -470,14 +470,14 @@ footer { margin-top:56px; color:var(--muted); font-size:.9rem; }
       <circle class="term" cx="760" cy="155" r="5"/>
     </svg>
     </div>
-    <figcaption>The 15&nbsp;k&Omega; resistor and the 10&nbsp;nF capacitor go on the ESP32 side of the 10&nbsp;k&Omega; resistor. Place them close to the ESP32 pin.</figcaption>
+    <figcaption>Both resistors are 10&nbsp;k&Omega;. The second (bottom) resistor and the 10&nbsp;nF capacitor go on the ESP32 side of the first one. Place them close to the ESP32 pin. The ceramic capacitor has no polarity: either leg can go either way.</figcaption>
   </figure>
   <div class="tbl">
     <table>
       <thead><tr><th>Sensor</th><th>Its OUT pin goes through the divider to</th><th>What it measures</th></tr></thead>
       <tbody>
         <tr><td>ZMPT101B</td><td><b class="mono">GPIO 36</b> (printed <span class="mono">VP</span>)</td><td>Mains voltage (shared by both outlets)</td></tr>
-        <tr><td>ACS712 #1</td><td><b class="mono">GPIO 39</b> (printed <span class="mono">VN</span>)</td><td>Current of Out 1</td></tr>
+        <tr><td>ACS712 #1</td><td><b class="mono">GPIO 35</b> (printed <span class="mono">D35</span>)</td><td>Current of Out 1</td></tr>
         <tr><td>ACS712 #2</td><td><b class="mono">GPIO 34</b> (printed <span class="mono">D34</span>)</td><td>Current of Out 2</td></tr>
       </tbody>
     </table>
@@ -485,8 +485,9 @@ footer { margin-top:56px; color:var(--muted); font-size:.9rem; }
   <div class="cols">
     <div class="card">
       <h3>Reading the resistors</h3>
-      <p>10&nbsp;k&Omega;: brown, black, orange <span class="band" aria-hidden="true"><b style="background:#7a4a1e"></b><b style="background:#111"></b><b style="background:#f08a00"></b><b style="background:#c9a227"></b></span></p>
-      <p>15&nbsp;k&Omega;: brown, green, orange <span class="band" aria-hidden="true"><b style="background:#7a4a1e"></b><b style="background:#2f9e44"></b><b style="background:#f08a00"></b><b style="background:#c9a227"></b></span></p>
+      <p>10&nbsp;k&Omega; (4 bands, beige body): brown, black, orange <span class="band" aria-hidden="true"><b style="background:#7a4a1e"></b><b style="background:#111"></b><b style="background:#f08a00"></b><b style="background:#c9a227"></b></span></p>
+      <p>10&nbsp;k&Omega; (5 bands, blue body): brown, black, black, red, brown <span class="band" aria-hidden="true"><b style="background:#7a4a1e"></b><b style="background:#111"></b><b style="background:#111"></b><b style="background:#d32f2f"></b><b style="background:#7a4a1e"></b></span></p>
+      <p>You need six 10&nbsp;k&Omega; resistors in total, two per sensor.</p>
       <p>If you aren't sure, check with the multimeter on its &Omega; setting.</p>
     </div>
     <div class="card">
@@ -676,7 +677,7 @@ footer { margin-top:56px; color:var(--muted); font-size:.9rem; }
   <p>This is the 30-pin ESP32 DevKit V1 seen from the top, with the USB port at the bottom. Labels match what is printed on the board. Clones sometimes order the pins differently, so match by the <b>printed label</b>, not the position.</p>
   <figure>
     <div class="scroll">
-    <svg viewBox="0 0 1000 680" role="img" aria-label="ESP32 DevKit pinout with used pins highlighted: VP, VN, D34 sensors; D32 temperature probes; D33, D25 switches or touch; D26, D27 relays; GND, VIN and 3V3 power.">
+    <svg viewBox="0 0 1000 680" role="img" aria-label="ESP32 DevKit pinout with used pins highlighted: VP, D34, D35 sensors; D32 temperature probes; D33, D25 switches or touch; D26, D27 relays; GND, VIN and 3V3 power.">
       <rect x="400" y="20" width="200" height="640" rx="10" fill="#1e2a3a"/>
       <rect x="440" y="36" width="120" height="200" rx="4" fill="#a3abb3"/>
       <text x="500" y="140" text-anchor="middle" style="font:700 11px var(--mono);fill:#333">ESP-WROOM-32</text>
@@ -697,7 +698,7 @@ footer { margin-top:56px; color:var(--muted); font-size:.9rem; }
         <text x="576" y="526">D15</text><text x="576" y="562">GND</text><text x="576" y="598">3V3</text>
       </g>
       <g class="term">
-        <circle cx="410" cy="90" r="4"/><circle cx="410" cy="234" r="4"/><circle cx="410" cy="270" r="4"/>
+        <circle cx="410" cy="90" r="4"/><circle cx="410" cy="162" r="4"/><circle cx="410" cy="270" r="4"/>
         <circle cx="410" cy="450" r="4"/><circle cx="410" cy="486" r="4"/><circle cx="410" cy="522" r="4"/>
         <circle cx="590" cy="90" r="4"/><circle cx="590" cy="162" r="4"/><circle cx="590" cy="198" r="4"/>
         <circle cx="590" cy="270" r="4"/><circle cx="590" cy="306" r="4"/><circle cx="590" cy="342" r="4"/>
@@ -707,8 +708,8 @@ footer { margin-top:56px; color:var(--muted); font-size:.9rem; }
 
       <!-- used, left -->
       <line class="w ws" x1="250" y1="126" x2="404" y2="126"/><circle class="fs" cx="410" cy="126" r="7"/><text class="t" x="240" y="130" text-anchor="end">ZMPT101B OUT (divider)</text>
-      <line class="w ws" x1="250" y1="162" x2="404" y2="162"/><circle class="fs" cx="410" cy="162" r="7"/><text class="t" x="240" y="166" text-anchor="end">ACS712 #1 OUT (divider)</text>
       <line class="w ws" x1="250" y1="198" x2="404" y2="198"/><circle class="fs" cx="410" cy="198" r="7"/><text class="t" x="240" y="202" text-anchor="end">ACS712 #2 OUT (divider)</text>
+      <line class="w ws" x1="250" y1="234" x2="404" y2="234"/><circle class="fs" cx="410" cy="234" r="7"/><text class="t" x="240" y="238" text-anchor="end">ACS712 #1 OUT (divider)</text>
       <line class="w wsw" x1="250" y1="306" x2="404" y2="306"/><circle class="fsw" cx="410" cy="306" r="7"/><text class="t" x="240" y="310" text-anchor="end">Switch / touch 2</text>
       <line class="w wsw" x1="250" y1="342" x2="404" y2="342"/><circle class="fsw" cx="410" cy="342" r="7"/><text class="t" x="240" y="346" text-anchor="end">Switch / touch 1</text>
       <line class="w w1w" x1="250" y1="270" x2="404" y2="270"/><circle class="f1w" cx="410" cy="270" r="7"/><text class="t" x="240" y="274" text-anchor="end">Temp probes (+4.7k to 3V3)</text>
@@ -779,7 +780,7 @@ footer { margin-top:56px; color:var(--muted); font-size:.9rem; }
     </div>
     <div class="card">
       <h3>2 &middot; Measure the dividers</h3>
-      <p>With no load, an ACS712 OUT pin reads about 2.5&nbsp;V and the ESP32 pin after its divider reads about 1.5&nbsp;V. Check all three.</p>
+      <p>With no load, an ACS712 OUT pin reads about 2.5&nbsp;V and the ESP32 pin after its divider reads about 1.25&nbsp;V. Check all three.</p>
     </div>
     <div class="card">
       <h3>3 &middot; Name the probes</h3>

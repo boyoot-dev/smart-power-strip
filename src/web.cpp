@@ -42,6 +42,7 @@ void fillStatus(JsonDocument& doc) {
   Reading r = Metering::latest();
   doc["type"] = "status";
   doc["fw"] = kFwVersion;
+  doc["fw_waiting"] = Net::pendingUpdate();
   doc["time"] = TimeSync::now();
   doc["uptime_s"] = millis() / 1000;
   doc["wifi"] = WiFi.status() == WL_CONNECTED ? WiFi.SSID() : String();
@@ -64,6 +65,7 @@ void fillStatus(JsonDocument& doc) {
     o["power"] = r.out[n].power;
     o["pf"] = r.out[n].pf;
     o["kwh"] = r.out[n].kwh;
+    o["angle"] = r.out[n].raw_angle_deg;
   }
   ThermalStatus th = Thermal::status();
   JsonObject t = doc.createNestedObject("thermal");
@@ -153,6 +155,11 @@ void handleGetConfig(AsyncWebServerRequest* req) {
   doc["calib"]["v_gain"] = cal.v_gain;
   doc["calib"]["i1_gain"] = cal.i_gain[0];
   doc["calib"]["i2_gain"] = cal.i_gain[1];
+  doc["calib"]["phase_deg"] = cal.phase_deg;
+  const UpdateConfig& u = Config::update();
+  doc["update"]["auto_update"] = u.auto_update;
+  doc["update"]["window_start_h"] = u.window_start_h;
+  doc["update"]["window_end_h"] = u.window_end_h;
   doc["ap_ssid"] = Net::apSsid();
   doc["fw_title"] = kFwTitle;
   doc["fw"] = kFwVersion;
@@ -193,13 +200,24 @@ void handleSaveOutlet(AsyncWebServerRequest* req) {
     req->send(400, "application/json", "{\"error\":\"bad outlet\"}");
     return;
   }
+  // A field missing from the request keeps its saved value, so a partial API call can't
+  // silently zero the compressor delay.
+  auto has = [req](const char* name) { return req->hasParam(name, true); };
   OutletConfig c = Config::outlet(n);
-  copyIfSet(c.name, sizeof(c.name), param(req, "name"), false);
-  c.power_on = static_cast<PowerOn>(constrain(param(req, "power_on").toInt(), 0, 2));
-  c.input = static_cast<InputMode>(constrain(param(req, "input").toInt(), 0, 2));
-  c.touch_hold_ms = constrain(param(req, "touch_hold_s").toFloat(), 0.0f, 10.0f) * 1000;
-  c.compressor_protect = param(req, "compressor_protect") == "1";
-  c.min_off_s = constrain(param(req, "min_off_s").toInt(), 0, 1800);
+  if (has("name")) copyIfSet(c.name, sizeof(c.name), param(req, "name"), false);
+  if (has("power_on")) {
+    c.power_on = static_cast<PowerOn>(constrain(param(req, "power_on").toInt(), 0, 2));
+  }
+  if (has("input")) {
+    c.input = static_cast<InputMode>(constrain(param(req, "input").toInt(), 0, 2));
+  }
+  if (has("touch_hold_s")) {
+    c.touch_hold_ms = constrain(param(req, "touch_hold_s").toFloat(), 0.0f, 10.0f) * 1000;
+  }
+  if (has("compressor_protect")) {
+    c.compressor_protect = param(req, "compressor_protect") == "1";
+  }
+  if (has("min_off_s")) c.min_off_s = constrain(param(req, "min_off_s").toInt(), 0, 1800);
   Config::saveOutlet(n, c);
   req->send(200, "application/json", "{}");
 }
@@ -222,11 +240,48 @@ void handleProbe(AsyncWebServerRequest* req) {
   req->send(ok ? 200 : 404, "application/json", ok ? "{}" : "{\"error\":\"probe not found\"}");
 }
 
+void handleSaveUpdate(AsyncWebServerRequest* req) {
+  UpdateConfig c = Config::update();
+  if (req->hasParam("auto_update", true)) c.auto_update = param(req, "auto_update") == "1";
+  if (req->hasParam("window_start_h", true)) {
+    c.window_start_h = constrain(param(req, "window_start_h").toInt(), 0, 23);
+  }
+  if (req->hasParam("window_end_h", true)) {
+    c.window_end_h = constrain(param(req, "window_end_h").toInt(), 0, 23);
+  }
+  Config::saveUpdate(c);
+  req->send(200, "application/json", "{}");
+}
+
+void handleInstallUpdate(AsyncWebServerRequest* req) {
+  if (!Net::installUpdate()) {
+    req->send(409, "application/json", "{\"error\":\"No update waiting\"}");
+    return;
+  }
+  req->send(200, "application/json", "{\"restart\":true}");
+}
+
+void handleCalibratePhase(AsyncWebServerRequest* req) {
+  const char* err = nullptr;
+  if (!Metering::calibratePhase(&err)) {
+    DynamicJsonDocument doc(256);
+    doc["error"] = err;
+    String out;
+    serializeJson(doc, out);
+    req->send(409, "application/json", out);
+    return;
+  }
+  req->send(200, "application/json", "{}");
+}
+
 void handleSaveCalib(AsyncWebServerRequest* req) {
   CalibConfig c = Config::calib();
   if (param(req, "v_gain").toFloat() > 0) c.v_gain = param(req, "v_gain").toFloat();
   if (param(req, "i1_gain").toFloat() > 0) c.i_gain[0] = param(req, "i1_gain").toFloat();
   if (param(req, "i2_gain").toFloat() > 0) c.i_gain[1] = param(req, "i2_gain").toFloat();
+  if (req->hasParam("phase_deg", true)) {
+    c.phase_deg = constrain(param(req, "phase_deg").toFloat(), -60.0f, 60.0f);
+  }
   Config::saveCalib(c);
   req->send(200, "application/json", "{}");
 }
@@ -301,6 +356,9 @@ void begin() {
   server.on("/api/tb", HTTP_POST, handleSaveTb);
   server.on("/api/outlet-config", HTTP_POST, handleSaveOutlet);
   server.on("/api/calib", HTTP_POST, handleSaveCalib);
+  server.on("/api/calib-phase", HTTP_POST, handleCalibratePhase);
+  server.on("/api/update-config", HTTP_POST, handleSaveUpdate);
+  server.on("/api/install-update", HTTP_POST, handleInstallUpdate);
   server.on("/api/thermal", HTTP_POST, handleSaveThermal);
   server.on("/api/probe", HTTP_POST, handleProbe);
   server.on("/api/reboot", HTTP_POST, [](AsyncWebServerRequest* req) {

@@ -13,7 +13,7 @@ on the other. Nothing else crosses it.
           MAINS 220 V  (wire + screw terminals only)  ║  LOW VOLTAGE  (perfboard OK)
                                                       ║
   Plug L/N ──► HLK-20M05   [AC-L, AC-N]               ║  [+Vo, −Vo]      ──► 5 V rail / GND
-  L        ──► ACS712 #1   [IP+ → IP−]                ║  [VCC, GND, OUT] ──► GPIO 39
+  L        ──► ACS712 #1   [IP+ → IP−]                ║  [VCC, GND, OUT] ──► GPIO 35
   L        ──► ACS712 #2   [IP+ → IP−]                ║  [VCC, GND, OUT] ──► GPIO 34
   L/N      ──► ZMPT101B    [L, N]                     ║  [VCC, GND, OUT] ──► GPIO 36
   ACS #1   ──► Relay 1     [COM → NO] ──► Socket 1    ║  [VCC, GND, IN]  ◄── GPIO 26
@@ -83,7 +83,7 @@ carries only 3.3 V back to the ESP32 (section 3.5).
                                       ├──► ACS712 #1 GND
                                       ├──► ACS712 #2 GND
                                       ├──► ZMPT101B  GND
-                                      ├──► bottom of all 3× 15 kΩ divider resistors
+                                      ├──► bottom of all 3× lower 10 kΩ divider resistors
                                       ├──► all 3× 10 nF ADC caps
                                       ├──► both 100 nF switch caps
                                       ├──► one leg of each wall switch (or touch module GND)
@@ -106,24 +106,26 @@ signal level equals their supply and 5 V would overdrive the ESP32 pins.
                                  │
                         ┌────────┴────────┐
                         │                 │
-                     [15 kΩ]           [10 nF]
+                     [10 kΩ]           [10 nF]
                         │                 │
                        GND               GND
 ```
 
 | Sensor OUT | → divider → | ESP32 pin | Measures |
 |---|---|---|---|
-| ZMPT101B OUT | 10k / 15k / 10 nF | **GPIO 36 (VP)** | Line voltage (shared) |
-| ACS712 #1 OUT | 10k / 15k / 10 nF | **GPIO 39 (VN)** | Out 1 current |
-| ACS712 #2 OUT | 10k / 15k / 10 nF | **GPIO 34** | Out 2 current |
+| ZMPT101B OUT | 10k / 10k / 10 nF | **GPIO 36 (VP)** | Line voltage (shared) |
+| ACS712 #1 OUT | 10k / 10k / 10 nF | **GPIO 35** | Out 1 current |
+| ACS712 #2 OUT | 10k / 10k / 10 nF | **GPIO 34** | Out 2 current |
 
-- ×0.6 ratio keeps the signal at ~0.6–2.4 V, inside the ESP32 ADC's linear range even at
+- ×0.5 ratio keeps the signal at ~0.5–2.0 V, inside the ESP32 ADC's linear range even at
   the 16 A peak. Never connect a sensor OUT straight to a GPIO.
 - 10 nF, not 100 nF — see PLAN.md (100 nF would attenuate load harmonics).
-- Keep the 15 kΩ and 10 nF close to the ESP32 pin.
+- Keep the bottom 10 kΩ and the 10 nF close to the ESP32 pin. The ceramic 10 nF (“103”) has
+  no polarity.
 - **ZMPT101B trim pot:** with 220 V applied, adjust it so the module output swings about
-  ±1 V around its midpoint (scope, or the firmware's raw-ADC view) — enough headroom for
-  250 V without clipping. Do this before calibration.
+  ±1 V around its midpoint (needs a scope; the firmware has no raw-ADC view) — enough
+  headroom for 250 V without clipping. Do this before calibration. Without a scope, leave
+  it: on the first unit (as delivered, ~±0.6 V) readings were stable and calibrated fine.
 
 ### 3.3 Relays
 
@@ -207,7 +209,7 @@ reversed power makes a DS18B20 very hot within seconds.
 | VIN | HLK +5 V |
 | GND | Common GND |
 | GPIO 36 (VP) | ZMPT101B OUT via divider |
-| GPIO 39 (VN) | ACS712 #1 OUT via divider |
+| GPIO 35 | ACS712 #1 OUT via divider |
 | GPIO 34 | ACS712 #2 OUT via divider |
 | GPIO 26 | Relay 1 IN |
 | GPIO 27 | Relay 2 IN |
@@ -225,8 +227,7 @@ reversed power makes a DS18B20 very hot within seconds.
 | Waterproof DS18B20 probe | 2 | One per outlet, at its ACS712 / relay terminals |
 | 4.7 kΩ | 1 | GPIO 32 → 3V3 (one for all probes) |
 | TTP223 touch module (optional) | 0–2 | Behind a blank plate cover, instead of a rocker |
-| 10 kΩ | 3 | Divider top (sensor OUT → ADC pin) |
-| 15 kΩ | 3 | Divider bottom (ADC pin → GND) |
+| 10 kΩ | 6 | Divider top (sensor OUT → ADC pin) and bottom (ADC pin → GND) |
 | 10 nF | 3 | ADC pin → GND |
 | 100 nF | 2 | Rocker switch GPIO → GND (not needed for touch) |
 | 16 A fuse / breaker | 1 | Plug L input (or reuse an existing strip's breaker) |
@@ -236,11 +237,13 @@ reversed power makes a DS18B20 very hot within seconds.
 1. **Low voltage only, no mains:** ESP32 on USB, 5 V from the HLK *not* connected to mains
    — power the rail from USB/bench 5 V instead. Check relays click, switches or touch
    buttons toggle.
-2. Measure each divider: ACS712 OUT ≈ 2.5 V → ADC pin ≈ 1.5 V with no load.
+2. Measure each divider: ACS712 OUT ≈ 2.5 V → ADC pin ≈ 1.25 V with no load.
 3. **Probes:** connect them; within 30 s they appear under *Settings → Overheat
    protection*. Warm one in your hand to find which is which and name it. Only then
    zip-tie them in place.
-4. Mains connected, enclosure closed, lamp/kettle as first load. Adjust ZMPT101B pot,
-   then calibrate (PLAN.md R8).
+4. Mains connected, enclosure closed, kettle as first load. Adjust ZMPT101B pot, then
+   calibrate under *Settings → Calibration* (PLAN.md R8): voltage gain against a
+   multimeter, then **Auto-calibrate phase** with the kettle running (PF should read
+   1.00 afterwards). Check each outlet with the kettle: amps ≈ volts ÷ element resistance.
 5. Burn-in: microwave at full power 10+ min. The probe readings should rise only a few
    degrees; afterwards unplug and check ACS712/relay terminals and joints for heat.

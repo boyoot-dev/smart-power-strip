@@ -105,10 +105,26 @@ specific outlet in firmware.
   entered or auto-computed from the web UI against a reference (multimeter for voltage,
   clamp meter or known resistive load for current).
 - Stored in NVS.
+- **First unit, 2026-10-07:** `v_gain` 1.126 (multimeter: 230 V no-load, 220 V under
+  load), current gains left at the 1/33 default (a 26.2 Ω kettle read within 1.2 % on
+  both outlets), `phase_deg` 23.4 (auto-calibrated on the kettle: PF 0.917 → 1.00).
 
 ### R9 — ThingsBoard integration (via TbLink)
 - Telemetry, RPC control, shared-attribute config, OTA updates.
 - Dashboard widget(s) per outlet (adapted from the generic board's widgets).
+- **OTA rollout (decided 2026-10-07):** assign the package in ThingsBoard (to a
+  `smart-power-strip` device profile, so one assignment covers every customer). The strip
+  re-asks ThingsBoard for its assigned firmware every 30 min (ThingsBoard doesn't reliably
+  push a new assignment to a connected device), and the `fw_check` RPC does it on demand.
+  Installing restarts the strip (relays drop ~1 s; compressor outlets then wait
+  `min_off_s`), so it only installs inside a local-time window (default 03:00–05:00), or
+  at once via the `fw_install` RPC or the local Install now button.
+- **Auto-update off (per strip, local UI)** — for customers with equipment that must never
+  lose power unexpectedly (e.g. medical): the strip never restarts by itself or on a
+  remote command (`reboot` / `fw_install` RPCs are refused). Updates wait until someone
+  clicks Install now on the local page. Local Restart, settings that need a restart, and
+  pulling the plug still work. A crash/watchdog reset can't be ruled out by a setting.
+- ThingsBoard client attributes `auto_update` and `fw_waiting` show each strip's state.
 
 ### R10 — Per-outlet configuration (local UI)
 Every appliance-specific behaviour lives here, so the user decides after plugging things
@@ -169,7 +185,7 @@ roughly 7–10 A, so there's plenty of margin in practice.
 | GPIO | Function | Why this pin |
 |---|---|---|
 | 36 (VP) | ZMPT101B out (via divider) | ADC1, input-only |
-| 39 (VN) | ACS712 1 out (via divider) | ADC1, input-only |
+| 35 | ACS712 1 out (via divider) | ADC1, input-only (moved from 39 on 2026-10-04: VN pin broken on this board) |
 | 34 | ACS712 2 out (via divider) | ADC1, input-only |
 | 26 | Relay 1 IN | No boot glitch, not a strapping pin |
 | 27 | Relay 2 IN | No boot glitch, not a strapping pin |
@@ -212,13 +228,14 @@ Plug PE ─────────────────────── Ou
 - HLK +5 V → ESP32 VIN, relay modules VCC, ACS712 VCC, ZMPT101B VCC. Common GND.
 - ACS712 and ZMPT101B outputs swing around 2.5 V on a 5 V supply, up to ~4 V — **too
   much for the ESP32 ADC** (3.3 V max, linear to ~2.5 V). Each output goes through a
-  divider: **10 kΩ top / 15 kΩ bottom** (×0.6) → roughly 0.6–2.4 V, inside the ADC's
+  divider: **10 kΩ top / 10 kΩ bottom** (×0.5) → roughly 0.5–2.0 V, inside the ADC's
   linear range even at the 16 A peak (a 10k/20k "5 V→3.3 V" divider would push peaks to
-  ~2.7 V, into the non-linear zone). Add a **10 nF** cap from ADC pin to GND: it feeds
+  ~2.7 V, into the non-linear zone). Originally 10k/15k (×0.6, 0.6–2.4 V); switched to
+  10k/10k on 2026-10-04 to use parts on hand — ~17 % less signal, more headroom. Add a **10 nF** cap from ADC pin to GND: it feeds
   the ADC's sample-and-hold when the metering task switches channels and filters relay
-  noise. Not 100 nF — with the divider's ~6 kΩ source impedance that makes a ~265 Hz
+  noise. Not 100 nF — with the divider's ~5 kΩ source impedance that makes a ~320 Hz
   low-pass that eats 13–30 % of the 3rd–5th harmonics, so non-sinusoidal loads
-  (microwave) would read low; 10 nF puts the corner at ~2.6 kHz.
+  (microwave) would read low; 10 nF puts the corner at ~3.2 kHz.
 - Relay modules: set the trigger jumper to **High-level trigger** so a 3.3 V GPIO drives
   them reliably (in low-level mode a 3.3 V "HIGH" against a 5 V module often fails to
   release the relay). Keep JD-VCC jumpered to VCC unless separating the coil supply.
@@ -231,7 +248,7 @@ PlatformIO + Arduino (same stack as the generic board). Modules:
 
 | Module | Responsibility |
 |---|---|
-| `metering` | Dedicated FreeRTOS task (core 1). Interleaved V/I sampling over a whole number of mains cycles, per outlet; DC-offset removal in software (ACS712 zero drifts with the 5 V rail and temperature); Vrms, Irms, P, S, PF, frequency (zero crossings); energy integration; noise-floor dead-band (reports 0 A below ~0.1 A) |
+| `metering` | Dedicated FreeRTOS task (core 1). Interleaved V/I sampling over a whole number of mains cycles, per outlet; DC-offset removal in software (ACS712 zero drifts with the 5 V rail and temperature); Vrms, Irms, P, S, PF, frequency (zero crossings); energy integration; noise-floor gate (reports 0 A unless the load draws ≥ 5 W real power or ≥ 0.3 A; no-load noise is 0.1–0.27 A RMS); zero crossings < 12 ms apart ignored (ADC spikes); reactive power from V delayed a quarter cycle, and real power rotated by a calibrated `phase_deg` to cancel the ZMPT101B phase shift (kettle read PF 0.92 without it; Auto-calibrate phase button with a heater running) |
 | `outlets` | Owns relay state. Single entry point `request(outlet, state, source)` that applies compressor delay / protection locks and emits an event |
 | `protection` | Overcurrent (total + per outlet, with shed-priority ordering) and voltage window, evaluated on every metering cycle, driven entirely by per-outlet settings |
 | `switches` | Debounced edge detection → `outlets.request(toggle, button)`; any edge toggles (maintained rockers) |
@@ -263,15 +280,20 @@ possible, multiply the instantaneous values for real power, and take RMS of each
 then ~10 cycles of V+I_2. Each outlet updates ~2.5×/s — plenty for switching decisions,
 and telemetry is averaged down from that anyway.
 
-**Expected accuracy** after calibration: roughly ±3–5 % on power for loads above ~0.5 A.
-Small loads (phone chargers, standby) will read as 0. This is a household monitor, not a
+**Expected accuracy** after calibration: roughly ±3–5 % on power for loads above ~0.5 A
+(measured: ~1 % on a 1.9 kW kettle). Loads under ~5 W / 0.3 A (phone chargers, standby)
+read as 0; a 13 W soldering iron read correctly in watts but its amps/PF are noise. This is a household monitor, not a
 billing meter — fine for a fridge and a microwave.
 
 ### ThingsBoard keys (draft)
 - Telemetry: `voltage`, `frequency`, `out1_state`, `out1_current`, `out1_power`,
   `out1_pf`, `out1_energy`, same for `out2_`, `total_current`, `total_power`,
   `out1_event` / `out2_event`.
-- RPC: `setOutlet {outlet, state}`, `getState`, `resetEnergy {outlet}`, `reboot`.
+- RPC: `setOutlet {outlet, state}`, `setOut1`/`setOut2` (bool), `getOut1`/`getOut2`,
+  `getState`, `resetEnergy {outlet}`, `reboot`, `fw_check`, `fw_install` (the last two
+  and `reboot` see R9; `reboot`/`fw_install` are refused while auto-update is off).
+- Client attributes: `ip`, `rssi`, `uptime_s`, `out1_name`/`out2_name`, `temp_N_name`,
+  `auto_update`, `fw_waiting`.
 - Shared attributes: limits, protection flags, telemetry interval.
 - Telemetry cadence: every 10 s, plus immediately on relay change or a >10 % power jump.
 
@@ -291,9 +313,10 @@ billing meter — fine for a fridge and a microwave.
 
 - **M0 — Repo scaffold** *(this commit)*: PLAN, pin map, PlatformIO project that builds.
 - **M1 — Bench, no mains**: relays + switches + web UI + ThingsBoard control + event log.
-  Measure the ACS712 zero-current noise floor.
+  Measure the ACS712 zero-current noise floor. *(Measured: 0.1–0.27 A RMS.)*
 - **M2 — Metering**: sampling task, RMS/power math, calibration page. First mains test
-  with a lamp/kettle behind the enclosure.
+  with a lamp/kettle behind the enclosure. *(Done 2026-10-07: calibrated, see R8; OTA
+  update flow tested end to end, 0.1.1 → 0.1.6.)*
 - **M3 — Protection + per-outlet settings**: overcurrent with shed priority, compressor
   delay, voltage window, presets.
 - **M4 — History + dashboard**: local charts, ThingsBoard widgets.
