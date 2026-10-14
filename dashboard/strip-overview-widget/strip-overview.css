@@ -7,6 +7,7 @@
   font-family: Roboto, "Segoe UI", system-ui, sans-serif;
   color: var(--ink);
   display: grid;
+  align-content: start;
   gap: 14px;
   padding: 4px;
   height: 100%;
@@ -55,7 +56,7 @@
 .ps-card.is-wait .ps-card-state { color: var(--wait); font-weight: 600; }
 
 .ps-toggle { position: relative; width: 50px; height: 28px; border: 0; border-radius: 14px; background: #c9cfca; cursor: pointer; flex: none; padding: 0; transition: background .15s; }
-.ps-toggle span { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px #0003; transition: transform .15s; }
+.ps-toggle span { position: absolute; top: 3px; inset-inline-start: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px #0003; transition: transform .15s; }
 .ps-toggle[aria-checked="true"] { background: var(--on); }
 .ps-card.is-wait .ps-toggle { background: var(--wait); }
 .ps-toggle[aria-checked="true"] span { transform: translateX(22px); }
@@ -68,7 +69,7 @@
 .ps-kv { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; border-top: 1px solid var(--line); padding-top: 8px; }
 .ps-kv b { display: block; font: 600 15px "Roboto Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
 .ps-kv span { font-size: 11px; color: var(--mut); }
-.ps-card-hint { font-size: 11px; color: var(--accent); text-align: right; }
+.ps-card-hint { font-size: 11px; color: var(--accent); text-align: end; }
 .ps-card:hover .ps-card-hint { text-decoration: underline; }
 .ps-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
@@ -111,8 +112,23 @@
 .ps-timeline { display: flex; height: 16px; border-radius: 4px; overflow: hidden; background: var(--soft); }
 .ps-seg.on { background: var(--on); } .ps-seg.off { background: #d4d9d5; } .ps-seg.none { background: repeating-linear-gradient(45deg, var(--soft) 0 4px, #e6e9e5 4px 8px); }
 .ps-tl-legend { display: flex; gap: 14px; font-size: 11px; color: var(--mut); }
-.ps-tl-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+.ps-tl-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-inline-end: 4px; vertical-align: -1px; }
 .ps-tl-legend i.on { background: var(--on); } .ps-tl-legend i.off { background: #d4d9d5; }
 .ps-tl-legend i.none { background: repeating-linear-gradient(45deg, var(--soft) 0 3px, #d8dcd7 3px 6px); }
 .ps-panel-foot { display: flex; justify-content: flex-end; border-top: 1px solid var(--line); padding-top: 10px; }
 .ps-reset.is-armed { background: var(--danger); border-color: var(--danger); color: #fff; }
+
+/* language button */
+.ps-lang { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 3px 10px; font: inherit; font-size: 12px; cursor: pointer; color: var(--accent); flex: none; }
+.ps-lang:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Arabic (dir="rtl"). Number + Latin unit pairs stay left-to-right ("231 V") but sit on
+   the right; charts keep time running left to right. Letter spacing breaks Arabic
+   letter joining, so it is turned off. */
+.ps[dir="rtl"] .ps-stat { direction: ltr; justify-items: end; }
+.ps[dir="rtl"] .ps-cap { direction: rtl; }
+.ps[dir="rtl"] .ps-power { direction: ltr; justify-content: flex-end; }
+.ps[dir="rtl"] .ps-cap, .ps[dir="rtl"] .ps-sec-title { letter-spacing: 0; text-transform: none; }
+.ps[dir="rtl"] .ps-sum b { font-family: Roboto, "Segoe UI", system-ui, sans-serif; }  /* "11 ساعة" in a mono font */
+.ps[dir="rtl"] .ps-toggle[aria-checked="true"] span { transform: translateX(-22px); }
+.ps-chart, .ps-timeline { direction: ltr; }

@@ -4,3 +4,4 @@
 .vscode/launch.json
 .vscode/ipch
 .claude/settings.local.json
+include/web_page.h

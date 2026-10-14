@@ -45,6 +45,9 @@ void fillStatus(JsonDocument& doc) {
   doc["fw_waiting"] = Net::pendingUpdate();
   doc["time"] = TimeSync::now();
   doc["uptime_s"] = millis() / 1000;
+  doc["heap_free"] = ESP.getFreeHeap();
+  doc["heap_min"] = ESP.getMinFreeHeap();
+  doc["heap_max_block"] = ESP.getMaxAllocHeap();
   doc["wifi"] = WiFi.status() == WL_CONNECTED ? WiFi.SSID() : String();
   doc["ip"] = WiFi.localIP().toString();
   doc["rssi"] = WiFi.RSSI();
@@ -346,7 +349,12 @@ void begin() {
   ws.onEvent(onWsEvent);
   server.addHandler(&ws);
   server.on("/", HTTP_GET, [](AsyncWebServerRequest* req) {
-    req->send(200, "text/html", kIndexHtml);
+    // Streamed from flash. Passing the page as a char* makes the server copy it into a
+    // heap String, which fails (empty page) once TLS holds its buffers.
+    AsyncWebServerResponse* r =
+        req->beginResponse(200, "text/html; charset=utf-8", kIndexHtmlGz, kIndexHtmlGzLen);
+    r->addHeader("Content-Encoding", "gzip");
+    req->send(r);
   });
   server.on("/api/status", HTTP_GET, handleStatus);
   server.on("/api/events", HTTP_GET, handleEvents);

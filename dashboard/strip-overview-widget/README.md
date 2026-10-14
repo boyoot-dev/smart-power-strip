@@ -13,6 +13,10 @@ One ThingsBoard "HTML Card" widget for the whole power strip:
   approximate kWh used, time on, a power chart, an on/off timeline and every switching
   event with who caused it (wall switch, dashboard, local page, power returning,
   compressor delay). The panel also has a two-click "Reset energy counter" button.
+- **Arabic or English:** Arabic (right to left) by default; the button next to the device
+  name switches language. The choice is remembered per browser (`localStorage`
+  `powerStripLang`), so each customer's browser keeps its own. Outlet names left at the
+  default `Out N` follow the language; names typed on the strip's page show as typed.
 
 ## Setup
 

@@ -6,6 +6,9 @@
   wiring (incl. 10k/10k ADC dividers), firmware modules, milestones. Read it first and keep
   it updated when decisions change.
 - [include/pins.h](include/pins.h) is the source of truth for GPIO assignments.
+- The local web page is [web/index.html](web/index.html) (Arabic + English). The build
+  gzips it into `include/web_page.h` (generated, gitignored) and serves it from flash;
+  never send it as a `char*`, which copies it to the heap and starves TLS.
 - [docs/sessions/](docs/sessions/) holds summaries of past planning sessions (the Q&A and
   reasoning behind PLAN.md) — read when the user refers to an earlier discussion.
 - Outlets are generic (`out1` / `out2`). Never hardcode appliance-specific behaviour to an

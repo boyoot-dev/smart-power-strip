@@ -84,6 +84,8 @@ specific outlet in firmware.
 - Settings: WiFi, ThingsBoard, strip-wide limits, and a per-outlet settings page (R10).
 - Calibration page (R8).
 - History charts (R7) and event log (R6).
+- Arabic (default, right to left) and English, switched by a button on the page and
+  remembered per browser. The ThingsBoard widget does the same.
 
 ### R6 — Event log
 - Every relay change is recorded with timestamp, outlet, new state and **source**:

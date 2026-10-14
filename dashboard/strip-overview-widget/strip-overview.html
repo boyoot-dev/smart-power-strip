@@ -22,13 +22,14 @@
         <div class="ps-name">Power Strip</div>
         <div class="ps-sub"><span class="ps-status">Checking&hellip;</span><span class="ps-meta"></span></div>
       </div>
+      <button type="button" class="ps-lang"></button>
     </div>
     <div class="ps-mains">
-      <div class="ps-stat"><span class="ps-num" data-f="voltage">&ndash;</span><span class="ps-unit">V</span><span class="ps-cap">Mains</span></div>
-      <div class="ps-stat"><span class="ps-num" data-f="frequency">&ndash;</span><span class="ps-unit">Hz</span><span class="ps-cap">Frequency</span></div>
-      <div class="ps-stat"><span class="ps-num" data-f="total_power">&ndash;</span><span class="ps-unit">W</span><span class="ps-cap">Total power</span></div>
-      <div class="ps-stat"><span class="ps-num" data-f="total_current">&ndash;</span><span class="ps-unit">A</span><span class="ps-cap">Total current</span></div>
-      <div class="ps-stat" title=""><span class="ps-num ps-temp">&ndash;</span><span class="ps-unit">&deg;C</span><span class="ps-cap">Hottest point</span></div>
+      <div class="ps-stat"><span class="ps-num" data-f="voltage">&ndash;</span><span class="ps-unit">V</span><span class="ps-cap" data-t="Mains">Mains</span></div>
+      <div class="ps-stat"><span class="ps-num" data-f="frequency">&ndash;</span><span class="ps-unit">Hz</span><span class="ps-cap" data-t="Frequency">Frequency</span></div>
+      <div class="ps-stat"><span class="ps-num" data-f="total_power">&ndash;</span><span class="ps-unit">W</span><span class="ps-cap" data-t="Total power">Total power</span></div>
+      <div class="ps-stat"><span class="ps-num" data-f="total_current">&ndash;</span><span class="ps-unit">A</span><span class="ps-cap" data-t="Total current">Total current</span></div>
+      <div class="ps-stat" title=""><span class="ps-num ps-temp">&ndash;</span><span class="ps-unit">&deg;C</span><span class="ps-cap" data-t="Hottest point">Hottest point</span></div>
     </div>
   </header>
   <div class="ps-alert" hidden></div>
@@ -40,12 +41,12 @@
     <div class="ps-panel" role="dialog" aria-modal="true">
       <div class="ps-panel-head">
         <div class="ps-panel-title">&ndash;</div>
-        <button type="button" class="ps-close" aria-label="Close">&times;</button>
+        <button type="button" class="ps-close" aria-label="Close" data-t-label="Close">&times;</button>
       </div>
       <div class="ps-range">
-        <button type="button" data-days="1">24 hours</button>
-        <button type="button" data-days="7">7 days</button>
-        <button type="button" data-days="30">30 days</button>
+        <button type="button" data-days="1" data-t="24 hours">24 hours</button>
+        <button type="button" data-days="7" data-t="7 days">7 days</button>
+        <button type="button" data-days="30" data-t="30 days">30 days</button>
       </div>
       <div class="ps-panel-body"></div>
       <div class="ps-panel-foot">
@@ -69,6 +70,64 @@
 
   var $ = function(sel) { return root.querySelector(sel); };
   var outletsEl = $('.ps-outlets');
+
+  // ---------- language ----------
+  // Arabic by default; the header button switches and the choice is kept per browser.
+  // Arabic is keyed by the English text; {0}, {1} are filled in by T().
+  var AR = {
+    'Power Strip': 'المشترك الذكي', 'Checking…': 'جارٍ التحقق…', 'Online': 'متصل', 'Offline': 'غير متصل',
+    'Mains': 'جهد الكهرباء', 'Frequency': 'التردد', 'Total power': 'إجمالي القدرة', 'Total current': 'إجمالي التيار',
+    'Hottest point': 'أعلى حرارة', 'Close': 'إغلاق', '24 hours': '24 ساعة', '7 days': '7 أيام', '30 days': '30 يومًا',
+    'Out {0}': 'مخرج {0}', 'Amps': 'أمبير', 'Power factor': 'معامل القدرة', 'kWh': 'kWh',
+    'Tap for history ›': 'اضغط لعرض السجل ‹', 'Switch {0}': 'تشغيل أو إطفاء {0}', 'Show history': 'عرض السجل',
+    'Command failed: {0}': 'فشل الأمر: {0}', 'Loading…': 'جارٍ التحميل…', 'Device offline': 'الجهاز غير متصل',
+    'On': 'يعمل', 'Off': 'مطفأ', 'Turning on in {0}': 'يعمل بعد {0}', 'Turned on': 'تم التشغيل', 'Turned off': 'تم الإطفاء',
+    'by overheat protection': 'بواسطة الحماية من الحرارة', 'temperature probe fault': 'بسبب عطل حساس الحرارة',
+    'after power returned': 'بعد عودة الكهرباء', 'by wall switch': 'من المفتاح', 'from local page': 'من صفحة المشترك',
+    'from dashboard': 'من لوحة التحكم', 'by rule': 'بقاعدة تلقائية', 'overcurrent trip': 'بسبب تيار زائد',
+    'voltage protection': 'بواسطة حماية الجهد', 'after compressor delay': 'بعد انتهاء تأخير الكمبروسر',
+    'Probe {0}': 'حساس {0}',
+    'Overheat: all outlets were switched off and stay locked until every probe cools down.':
+      'حرارة زائدة: تم فصل كل المخارج وستظل مقفولة حتى تبرد كل الحساسات.',
+    'A temperature probe stopped answering, so all outlets were switched off. Check it on the strip’s local page.':
+      'توقف أحد حساسات الحرارة عن الرد، لذا تم فصل كل المخارج. افحصه من صفحة المشترك المحلية.',
+    'fw {0}': 'الإصدار {0}', 'fw {0} (auto-update off)': 'الإصدار {0} (التحديث التلقائي متوقف)',
+    'fw {0} ({1} ready, installs in its update window)': 'الإصدار {0} (الإصدار {1} جاهز، يُثبَّت في موعد التحديث)',
+    'fw {0} ({1} ready, auto-update off: install it on the strip’s page)':
+      'الإصدار {0} (الإصدار {1} جاهز، التحديث التلقائي متوقف: ثبّته من صفحة المشترك)',
+    'WiFi {0}': 'واي فاي {0}', '{0} min': '{0} دقيقة', '{0} h': '{0} ساعة', '{0} h {1} min': '{0} ساعة و{1} دقيقة',
+    '{0} d {1} h': '{0} يوم و{1} ساعة', 'Now': 'الآن', 'Average power over time, peak {0}': 'متوسط القدرة عبر الوقت، الأقصى {0}',
+    'On from {0}': 'يعمل منذ {0}', 'Off from {0}': 'مطفأ منذ {0}', 'Average': 'المتوسط', 'Peak': 'الأقصى',
+    'kWh used': 'الاستهلاك (kWh)', 'Time on': 'مدة التشغيل', 'No power readings in this range.': 'لا توجد قراءات قدرة في هذه الفترة.',
+    'On / off': 'التشغيل / الإطفاء', 'No data': 'لا بيانات', 'Switching ({0})': 'مرات التشغيل والإطفاء ({0})',
+    'No switching in this range.': 'لم يتم تشغيل أو إطفاء في هذه الفترة.', 'Could not load history: {0}': 'تعذّر تحميل السجل: {0}',
+    '{0} – history': 'سجل {0}', 'Reset energy counter': 'تصفير عداد الطاقة', 'Click again to reset to 0 kWh': 'اضغط مرة أخرى للتصفير',
+    'Energy counter reset': 'تم تصفير عداد الطاقة', 'Reset failed: {0}': 'فشل التصفير: {0}'
+  };
+  var LANG_KEY = 'powerStripLang';
+  var lang = 'ar';
+  try { lang = localStorage.getItem(LANG_KEY) || 'ar'; } catch (e) {}
+
+  function T(s) {
+    var args = arguments;
+    return ((lang === 'ar' && AR[s]) || s).replace(/\{(\d)\}/g, function(_, i) { return args[Number(i) + 1]; });
+  }
+  // Keeps a number with its Latin unit ("120 W") in reading order inside Arabic text.
+  function L(s) { return '\u2066' + s + '\u2069'; }
+  function locale() { return lang === 'ar' ? 'ar-EG-u-nu-latn' : []; }
+  // Default names ("Out 1") follow the language; names set on the strip are shown as set.
+  function outletName(n) {
+    var name = state.names[n];
+    return !name || name === 'Out ' + n ? T('Out {0}', n) : name;
+  }
+
+  function applyLang() {
+    root.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
+    root.setAttribute('lang', lang);
+    root.querySelectorAll('[data-t]').forEach(function(el) { el.textContent = T(el.getAttribute('data-t')); });
+    root.querySelectorAll('[data-t-label]').forEach(function(el) { el.setAttribute('aria-label', T(el.getAttribute('data-t-label'))); });
+    $('.ps-lang').textContent = lang === 'ar' ? 'English' : 'العربية';
+  }
 
   // ---------- helpers ----------
   function token() { return localStorage.getItem('jwt_token'); }
@@ -100,17 +159,17 @@
 
   function when(ts) {
     var d = new Date(ts), now = new Date();
-    var time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    var time = d.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' });
     if (d.toDateString() === now.toDateString()) return time;
-    return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + time;
+    return d.toLocaleDateString(locale(), { month: 'short', day: 'numeric' }) + ' ' + time;
   }
 
   function duration(ms) {
     var m = Math.max(1, Math.round(ms / 60000));
-    if (m < 60) return m + ' min';
+    if (m < 60) return T('{0} min', m);
     var h = Math.floor(m / 60);
-    if (h < 24) return h + ' h' + (m % 60 ? ' ' + (m % 60) + ' min' : '');
-    return Math.floor(h / 24) + ' d ' + (h % 24) + ' h';
+    if (h < 24) return m % 60 ? T('{0} h {1} min', h, m % 60) : T('{0} h', h);
+    return T('{0} d {1} h', Math.floor(h / 24), h % 24);
   }
 
   var SOURCE_TEXT = {
@@ -136,16 +195,16 @@
     el.innerHTML =
       '<div class="ps-card-top">' +
         '<div class="ps-plug">' + POWER_ICON + '</div>' +
-        '<div class="ps-card-id"><div class="ps-card-name">Out ' + n + '</div><div class="ps-card-state">&ndash;</div></div>' +
-        '<button type="button" class="ps-toggle" role="switch" aria-checked="false" aria-label="Switch Out ' + n + '"><span></span></button>' +
+        '<div class="ps-card-id"><div class="ps-card-name"></div><div class="ps-card-state">&ndash;</div></div>' +
+        '<button type="button" class="ps-toggle" role="switch" aria-checked="false"><span></span></button>' +
       '</div>' +
       '<div class="ps-power"><span class="ps-big">&ndash;</span><span class="ps-big-unit">W</span></div>' +
       '<div class="ps-kv">' +
-        '<div><b data-k="current">&ndash;</b><span>Amps</span></div>' +
-        '<div><b data-k="pf">&ndash;</b><span>Power factor</span></div>' +
-        '<div><b data-k="energy">&ndash;</b><span>kWh</span></div>' +
+        '<div><b data-k="current">&ndash;</b><span data-t="Amps">Amps</span></div>' +
+        '<div><b data-k="pf">&ndash;</b><span data-t="Power factor">Power factor</span></div>' +
+        '<div><b data-k="energy">&ndash;</b><span data-t="kWh">kWh</span></div>' +
       '</div>' +
-      '<div class="ps-card-hint">Tap for history &rsaquo;</div>';
+      '<div class="ps-card-hint" data-t="Tap for history ›">Tap for history &rsaquo;</div>';
     outletsEl.appendChild(el);
 
     var card = {
@@ -170,12 +229,12 @@
       o.on = want;  // optimistic; the device's own report corrects it
       renderOutlet(n);
       rpc('setOutlet', { outlet: n, state: want }).catch(function(err) {
-        card.stateEl.textContent = 'Command failed: ' + err.message;
+        card.stateEl.textContent = T('Command failed: {0}', err.message);
       });
     });
     el.tabIndex = 0;
     el.setAttribute('role', 'button');
-    el.setAttribute('aria-label', 'Show history');
+    el.setAttribute('data-t-label', 'Show history');
     el.addEventListener('click', function() { openHistory(n); });
     el.addEventListener('keydown', function(e) {
       if (e.target === el && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openHistory(n); }
@@ -190,18 +249,19 @@
   function renderOutlet(n) {
     var o = state.outlets[n], c = cards[n];
     var left = pendingLeft(o);
-    c.name.textContent = state.names[n] || ('Out ' + n);
+    c.name.textContent = outletName(n);
+    c.toggle.setAttribute('aria-label', T('Switch {0}', outletName(n)));
     c.el.classList.toggle('is-on', o.on === true);
     c.el.classList.toggle('is-wait', !o.on && left > 0);
     c.el.classList.toggle('is-offline', !state.online);
     c.toggle.setAttribute('aria-checked', String(o.on === true || left > 0));
     c.toggle.disabled = !state.online;
-    if (!state.seen) c.stateEl.textContent = 'Loading…';
-    else if (!state.online) c.stateEl.textContent = 'Device offline';
-    else if (o.on === null) c.stateEl.textContent = 'Loading…';
-    else if (o.on) c.stateEl.textContent = 'On';
-    else if (left > 0) c.stateEl.textContent = 'Turning on in ' + Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0');
-    else c.stateEl.textContent = 'Off';
+    if (!state.seen) c.stateEl.textContent = T('Loading…');
+    else if (!state.online) c.stateEl.textContent = T('Device offline');
+    else if (o.on === null) c.stateEl.textContent = T('Loading…');
+    else if (o.on) c.stateEl.textContent = T('On');
+    else if (left > 0) c.stateEl.textContent = T('Turning on in {0}', L(Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0')));
+    else c.stateEl.textContent = T('Off');
     c.big.textContent = o.power === null ? '–' : num(o.power, 0);
     c.kv.current.textContent = o.current === null ? '–' : num(o.current, 2);
     c.kv.pf.textContent = o.pf === null ? '–' : num(o.pf, 2);
@@ -210,7 +270,8 @@
 
   function renderHeader() {
     root.classList.toggle('is-online', state.online);
-    $('.ps-status').textContent = !state.seen ? 'Checking…' : state.online ? 'Online' : 'Offline';
+    $('.ps-status').textContent = T(!state.seen ? 'Checking…' : state.online ? 'Online' : 'Offline');
+    $('.ps-name').textContent = deviceName || T('Power Strip');
   }
 
   function renderAll() {
@@ -233,8 +294,8 @@
   function eventRow(e) {
     return '<div class="ps-ev">' +
       '<span class="ps-ev-dot ' + (e.on ? 'on' : 'off') + '"></span>' +
-      '<span class="ps-ev-what">Turned <b>' + (e.on ? 'on' : 'off') + '</b>' +
-      ' <span class="ps-ev-src">' + esc(SOURCE_TEXT[e.source] || e.source) + '</span></span>' +
+      '<span class="ps-ev-what"><b>' + T(e.on ? 'Turned on' : 'Turned off') + '</b>' +
+      ' <span class="ps-ev-src">' + esc(SOURCE_TEXT[e.source] ? T(SOURCE_TEXT[e.source]) : e.source) + '</span></span>' +
       '<span class="ps-ev-time">' + when(e.ts) + '</span></div>';
   }
 
@@ -243,7 +304,7 @@
   var ATTR_KEYS = ['ip', 'rssi', 'auto_update', 'fw_waiting'];
   var PROBES = [1, 2, 3, 4];
   PROBES.forEach(function(i) { TS_KEYS.push('temp_' + i); ATTR_KEYS.push('temp_' + i + '_name'); });
-  var temps = {}, probeNames = {};
+  var temps = {}, probeNames = {}, thermalState = '';
   var THERMAL_TEXT = {
     overheat: 'Overheat: all outlets were switched off and stay locked until every probe cools down.',
     probe_fault: 'A temperature probe stopped answering, so all outlets were switched off. Check it on the strip’s local page.'
@@ -254,11 +315,14 @@
     PROBES.forEach(function(i) {
       if (temps[i] === undefined) return;
       max = max === null ? temps[i] : Math.max(max, temps[i]);
-      parts.push((probeNames[i] || 'Probe ' + i) + ': ' + num(temps[i], 1) + '°C');
+      parts.push((probeNames[i] || T('Probe {0}', i)) + ': ' + L(num(temps[i], 1) + '°C'));
     });
     var el = root.querySelector('.ps-temp');
     el.textContent = max === null ? '–' : num(max, 1);
     el.parentNode.title = parts.join('\n');
+    var alertEl = root.querySelector('.ps-alert'), text = THERMAL_TEXT[thermalState];
+    alertEl.hidden = !text;
+    alertEl.textContent = text ? T(text) : '';
   }
   OUTLETS.forEach(function(n) {
     ['state', 'current', 'power', 'pf', 'energy', 'pending_s'].forEach(function(k) { TS_KEYS.push('out' + n + '_' + k); });
@@ -271,17 +335,16 @@
   function renderMeta() {
     var bits = [], autoOff = meta.auto_update === false || meta.auto_update === 'false';
     if (meta.fw) {
-      var fw = 'fw ' + meta.fw;
+      var fw = L(meta.fw), waiting = L(meta.fw_waiting);
       if (meta.fw_waiting) {
-        fw += ' (' + meta.fw_waiting + ' ready, ' +
-          (autoOff ? 'auto-update off: install it on the strip’s page' : 'installs in its update window') + ')';
-      } else if (autoOff) {
-        fw += ' (auto-update off)';
+        bits.push(autoOff ? T('fw {0} ({1} ready, auto-update off: install it on the strip’s page)', fw, waiting)
+                          : T('fw {0} ({1} ready, installs in its update window)', fw, waiting));
+      } else {
+        bits.push(T(autoOff ? 'fw {0} (auto-update off)' : 'fw {0}', fw));
       }
-      bits.push(fw);
     }
-    if (meta.ip) bits.push(meta.ip);
-    if (meta.rssi) bits.push('WiFi ' + meta.rssi + ' dBm');
+    if (meta.ip) bits.push(L(meta.ip));
+    if (meta.rssi) bits.push(T('WiFi {0}', L(meta.rssi + ' dBm')));
     $('.ps-meta').textContent = bits.length ? ' · ' + bits.join(' · ') : '';
   }
 
@@ -289,12 +352,7 @@
     var v = p.value, ts = Number(p.ts);
     if (key === 'heartbeat') { state.lastBeat = ts; return; }
     if (key === 'current_fw_version') { meta.fw = v; renderMeta(); return; }
-    if (key === 'thermal_state') {
-      var alertEl = root.querySelector('.ps-alert'), text = THERMAL_TEXT[v];
-      alertEl.hidden = !text;
-      alertEl.textContent = text || '';
-      return;
-    }
+    if (key === 'thermal_state') { thermalState = v; renderThermal(); return; }
     var tm = /^temp_(\d)$/.exec(key);
     if (tm) { temps[Number(tm[1])] = Number(v); renderThermal(); return; }
     var head = root.querySelector('[data-f="' + key + '"]');
@@ -334,7 +392,7 @@
     renderAll();
   }
 
-  var ws = null, reconnectTimer = null;
+  var ws = null, reconnectTimer = null, deviceName = '';
   function connectWs() {
     ws = new WebSocket(TB_HOST.replace(/^http/, 'ws') + '/api/ws');
     ws.onopen = function() {
@@ -362,7 +420,8 @@
       var ent = list && list[0];
       if (ent && ent.latest) applyLatest(ent.latest);
       if (ent && ent.latest && ent.latest.ENTITY_FIELD && ent.latest.ENTITY_FIELD.name) {
-        $('.ps-name').textContent = ent.latest.ENTITY_FIELD.name.value;
+        deviceName = ent.latest.ENTITY_FIELD.name.value;
+        renderHeader();
       }
     };
     ws.onclose = function() {
@@ -380,27 +439,27 @@
   var BUCKET_MS = { 1: 5 * 60e3, 7: 60 * 60e3, 30: 6 * 60 * 60e3 };
 
   function chartSvg(points, start, end) {
-    var W = 640, H = 200, L = 44, R = 8, T = 10, B = 24;
+    var W = 640, H = 200, PL = 44, PR = 8, PT = 10, PB = 24;  // size and padding
     var max = 0;
     points.forEach(function(p) { max = Math.max(max, p.v); });
     var step = [5, 10, 25, 50, 100, 250, 500, 1000, 2500].filter(function(s) { return s * 4 >= max; })[0] || 5000;
     var top = Math.max(step, Math.ceil(max / step) * step);
-    function x(ts) { return L + (ts - start) / (end - start) * (W - L - R); }
-    function y(v) { return T + (1 - v / top) * (H - T - B); }
+    function x(ts) { return PL + (ts - start) / (end - start) * (W - PL - PR); }
+    function y(v) { return PT + (1 - v / top) * (H - PT - PB); }
     var grid = '';
     for (var g = 0; g <= top; g += top / 4) {
-      grid += '<line class="ps-grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(g).toFixed(1) + '" y2="' + y(g).toFixed(1) + '"/>' +
-              '<text class="ps-axis" x="' + (L - 6) + '" y="' + (y(g) + 4).toFixed(1) + '" text-anchor="end">' + Math.round(g) + '</text>';
+      grid += '<line class="ps-grid" x1="' + PL + '" x2="' + (W - PR) + '" y1="' + y(g).toFixed(1) + '" y2="' + y(g).toFixed(1) + '"/>' +
+              '<text class="ps-axis" x="' + (PL - 6) + '" y="' + (y(g) + 4).toFixed(1) + '" text-anchor="end">' + Math.round(g) + '</text>';
     }
     var line = points.map(function(p) { return x(p.ts).toFixed(1) + ',' + y(p.v).toFixed(1); }).join(' ');
     var area = points.length ? 'M' + x(points[0].ts).toFixed(1) + ',' + y(0) + ' L' + line.replace(/ /g, ' L') +
                ' L' + x(points[points.length - 1].ts).toFixed(1) + ',' + y(0) + ' Z' : '';
     var labels = [start, (start + end) / 2, end].map(function(t, i) {
-      return '<text class="ps-axis" x="' + x(t).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="' + ['start', 'middle', 'end'][i] + '">' + (i === 2 ? 'Now' : when(t)) + '</text>';
+      return '<text class="ps-axis" x="' + x(t).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="' + ['start', 'middle', 'end'][i] + '">' + (i === 2 ? T('Now') : when(t)) + '</text>';
     }).join('');
     var last = points[points.length - 1];
-    return '<svg class="ps-chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Average power over time, peak ' + Math.round(max) + ' W">' +
-      grid + '<text class="ps-axis" x="' + (L - 6) + '" y="' + (T - 1) + '" text-anchor="end" dy="-2">W</text>' +
+    return '<svg class="ps-chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(T('Average power over time, peak {0}', Math.round(max) + ' W')) + '">' +
+      grid + '<text class="ps-axis" x="' + (PL - 6) + '" y="' + (PT - 1) + '" text-anchor="end" dy="-2">W</text>' +
       (area ? '<path class="ps-area" d="' + area + '"/><polyline class="ps-line" points="' + line + '"/>' +
               '<circle class="ps-end" cx="' + x(last.ts).toFixed(1) + '" cy="' + y(last.v).toFixed(1) + '" r="3.5"/>' : '') +
       labels + '</svg>';
@@ -418,7 +477,7 @@
       var e = i + 1 < segs.length ? segs[i + 1].ts : end;
       if (s.on) onMs += e - s.ts;
       return '<div class="ps-seg ' + (s.on ? 'on' : 'off') + '" style="width:' + ((e - s.ts) / (end - start) * 100).toFixed(2) + '%" title="' +
-        (s.on ? 'On' : 'Off') + ' from ' + when(s.ts) + '"></div>';
+        esc(T(s.on ? 'On from {0}' : 'Off from {0}', when(s.ts))) + '"></div>';
     }).join('');
     var lead = segs.length ? ((segs[0].ts - start) / (end - start) * 100).toFixed(2) : 100;
     return { html: '<div class="ps-timeline"><div class="ps-seg none" style="width:' + lead + '%"></div>' + bar + '</div>', onMs: onMs };
@@ -435,7 +494,7 @@
 
   function loadHistory(quiet) {
     var req = ++hist.req, n = hist.n, end = Date.now(), start = end - hist.days * 864e5;
-    if (!quiet) body.innerHTML = '<div class="ps-empty">Loading&hellip;</div>';
+    if (!quiet) body.innerHTML = '<div class="ps-empty">' + T('Loading…') + '</div>';
     var listEl = body.querySelector('.ps-ev-list'), listScroll = listEl ? listEl.scrollTop : 0;
     var base = '/api/plugins/telemetry/DEVICE/' + DEVICE_ID + '/values/timeseries?startTs=' + start + '&endTs=' + end;
     Promise.all([
@@ -456,26 +515,26 @@
         .filter(Boolean).sort(function(a, b) { return b.ts - a.ts; });
       body.innerHTML =
         '<div class="ps-sum">' +
-          '<div><b>' + num(avg, 0) + ' W</b><span>Average</span></div>' +
-          '<div><b>' + num(peak, 0) + ' W</b><span>Peak</span></div>' +
-          '<div><b>&asymp; ' + num(kwh, 2) + '</b><span>kWh used</span></div>' +
-          '<div><b>' + duration(tl.onMs) + '</b><span>Time on</span></div>' +
+          '<div><b>' + L(num(avg, 0) + ' W') + '</b><span>' + T('Average') + '</span></div>' +
+          '<div><b>' + L(num(peak, 0) + ' W') + '</b><span>' + T('Peak') + '</span></div>' +
+          '<div><b>' + L('&asymp; ' + num(kwh, 2)) + '</b><span>' + T('kWh used') + '</span></div>' +
+          '<div><b>' + duration(tl.onMs) + '</b><span>' + T('Time on') + '</span></div>' +
         '</div>' +
-        (pts.length ? chartSvg(pts, start, end) : '<div class="ps-empty">No power readings in this range.</div>') +
-        '<div class="ps-sec-title">On / off</div>' + tl.html +
-        '<div class="ps-tl-legend"><span><i class="on"></i>On</span><span><i class="off"></i>Off</span><span><i class="none"></i>No data</span></div>' +
-        '<div class="ps-sec-title">Switching (' + evs.length + (evs.length === 200 ? '+' : '') + ')</div>' +
-        (evs.length ? '<div class="ps-ev-list">' + evs.map(eventRow).join('') + '</div>' : '<div class="ps-empty">No switching in this range.</div>');
+        (pts.length ? chartSvg(pts, start, end) : '<div class="ps-empty">' + T('No power readings in this range.') + '</div>') +
+        '<div class="ps-sec-title">' + T('On / off') + '</div>' + tl.html +
+        '<div class="ps-tl-legend"><span><i class="on"></i>' + T('On') + '</span><span><i class="off"></i>' + T('Off') + '</span><span><i class="none"></i>' + T('No data') + '</span></div>' +
+        '<div class="ps-sec-title">' + T('Switching ({0})', evs.length + (evs.length === 200 ? '+' : '')) + '</div>' +
+        (evs.length ? '<div class="ps-ev-list">' + evs.map(eventRow).join('') + '</div>' : '<div class="ps-empty">' + T('No switching in this range.') + '</div>');
       var newList = body.querySelector('.ps-ev-list');
       if (quiet && newList) newList.scrollTop = listScroll;  // keep the reader's place
     }).catch(function(err) {
-      if (req === hist.req && !quiet) body.innerHTML = '<div class="ps-empty">Could not load history: ' + esc(err.message) + '</div>';
+      if (req === hist.req && !quiet) body.innerHTML = '<div class="ps-empty">' + esc(T('Could not load history: {0}', err.message)) + '</div>';
     });
   }
 
   function openHistory(n) {
     hist.n = n;
-    $('.ps-panel-title').textContent = (state.names[n] || ('Out ' + n)) + ' – history';
+    $('.ps-panel-title').textContent = T('{0} – history', outletName(n));
     rangeBtns.forEach(function(b) { b.classList.toggle('is-active', Number(b.dataset.days) === hist.days); });
     resetArmed(false);
     modal.hidden = false;
@@ -500,18 +559,29 @@
   function resetArmed(on) {
     clearTimeout(resetTimer);
     resetBtn.classList.toggle('is-armed', on);
-    resetBtn.textContent = on ? 'Click again to reset to 0 kWh' : 'Reset energy counter';
+    resetBtn.textContent = T(on ? 'Click again to reset to 0 kWh' : 'Reset energy counter');
     if (on) resetTimer = setTimeout(function() { resetArmed(false); }, 4000);
   }
   resetBtn.addEventListener('click', function() {
     if (!resetBtn.classList.contains('is-armed')) { resetArmed(true); return; }
     resetArmed(false);
     rpc('resetEnergy', { outlet: hist.n })
-      .then(function() { resetBtn.textContent = 'Energy counter reset'; })
-      .catch(function(err) { resetBtn.textContent = 'Reset failed: ' + err.message; });
+      .then(function() { resetBtn.textContent = T('Energy counter reset'); })
+      .catch(function(err) { resetBtn.textContent = T('Reset failed: {0}', err.message); });
+  });
+
+  $('.ps-lang').addEventListener('click', function() {
+    lang = lang === 'ar' ? 'en' : 'ar';
+    try { localStorage.setItem(LANG_KEY, lang); } catch (e) {}
+    applyLang();
+    renderMeta();
+    renderThermal();
+    renderAll();
+    if (!modal.hidden) openHistory(hist.n);
   });
 
   // ---------- start ----------
+  applyLang();
   renderAll();
   connectWs();
 })();
